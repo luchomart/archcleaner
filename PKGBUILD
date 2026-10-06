@@ -15,7 +15,7 @@ optdepends=(
   'xdg-user-dirs: reconocer tus carpetas personales en cualquier idioma'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('5c9cc8ad08645592c7826b8468505e04619b8a4292b27c682726df572ac40f88')
+sha256sums=('ac683dae44fc4fff547f5e3b9d1cb9d2198d0463392bde594fc4decaccb67b18')
 
 package() {
   cd "$pkgname-$pkgver"
