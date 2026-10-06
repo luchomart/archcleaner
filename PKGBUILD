@@ -2,17 +2,17 @@
 pkgname=archcleaner
 pkgver=0.10.1
 pkgrel=1
-pkgdesc="Analizador y limpiador de disco para Arch Linux: qué ocupa espacio, qué es basura y desinstalaciones sin rastro (TUI)"
+pkgdesc="Disk analyzer, junk cleaner and trace-free uninstaller for Arch Linux (TUI, English/Spanish)"
 arch=('any')
 url="https://github.com/luchomart/archcleaner"
 license=('MIT')
 depends=('python>=3.12' 'python-rich' 'python-textual' 'glib2' 'pacman')
 optdepends=(
-  'pacman-contrib: limpiar la caché de pacman con paccache'
-  'timeshift: snapshot antes de desinstalar y limpieza de snapshots viejas (modo rsync)'
-  'flatpak: desinstalar apps Flatpak y limpiar runtimes sin uso'
-  'xdg-utils: abrir carpetas y desinstalar juegos de Steam'
-  'xdg-user-dirs: reconocer tus carpetas personales en cualquier idioma'
+  'pacman-contrib: clean the pacman cache with paccache'
+  'timeshift: snapshot before uninstalling and cleanup of old snapshots (rsync mode)'
+  'flatpak: uninstall Flatpak apps and clean unused runtimes'
+  'xdg-utils: open folders and uninstall Steam games'
+  'xdg-user-dirs: recognize your personal folders in any language'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('ac683dae44fc4fff547f5e3b9d1cb9d2198d0463392bde594fc4decaccb67b18')
