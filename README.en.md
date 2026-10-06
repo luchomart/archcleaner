@@ -46,13 +46,14 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
   - your home folder itself, or your personal folders such as Documents and Pictures;
   - whole drives;
   - files owned by an installed package.
+  - a folder with a mounted drive inside it.
 - **Symlinks are deleted as links**, never what they point to.
 - **Vital packages are protected.** The kernel, systemd, pacman, your desktop, drivers, the bootloader
   and similar packages are marked 🔒 and can't be uninstalled from ArchCleaner.
 - **Anything that looks like game saves** (folders such as `saves` or `worlds`) is never pre-selected.
 - **It can create a Timeshift snapshot** before uninstalling, so you can roll back if something goes wrong.
 - **Everything is logged** in `~/.local/state/archcleaner/acciones.log`.
-- **It is open source and tested.** 68 automated tests run on every change. They cover the safety
+- **It is open source and tested.** 71 automated tests run on every change. They cover the safety
   rules, and they drive the app with mouse clicks inside a fake home folder.
 
 ## 📸 Screenshots

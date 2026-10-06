@@ -66,6 +66,38 @@ class TestSeguridad(Base):
         if os.path.exists(actual):
             self.assertIsNotNone(self.verif.problema(actual))
 
+    def test_kernel_instalado_protegido(self):
+        """Los módulos de otro kernel que sigue instalado (ej. linux-lts) son de pacman: no se tocan."""
+        from archcleaner import seguridad
+        with mock.patch("os.path.exists", return_value=True), \
+                mock.patch("pathlib.Path.exists", return_value=True), \
+                mock.patch.object(seguridad, "_de_un_paquete", return_value=True):
+            self.assertIn("paquete", self.verif.problema("/usr/lib/modules/6.6.50-1-lts"))
+        with mock.patch("os.path.exists", return_value=True), \
+                mock.patch("pathlib.Path.exists", return_value=True), \
+                mock.patch.object(seguridad, "_de_un_paquete", return_value=False):
+            self.assertIsNone(self.verif.problema("/usr/lib/modules/6.1.0-viejo"))
+
+    def test_carpeta_con_disco_montado_adentro(self):
+        """Borrar recursivo entraría en el disco montado (bóveda de KDE, rclone, sshfs...)."""
+        from archcleaner import seguridad
+        boveda = self.home / "Vaults"
+        (boveda / "Privado").mkdir(parents=True)
+        montajes = ["/", str(boveda / "Privado")]
+        with mock.patch.object(seguridad, "_puntos_de_montaje", return_value=montajes):
+            self.assertIn("montado", self.verif.problema(boveda))
+            self.assertIsNone(self.verif.problema(self.home / ".cache/app"))
+            # la papelera también se niega: rutas y vaciar
+            r = ejecutar(armar_tarea(hallazgo(Modo.BORRAR, rutas=[boveda])), self.verif, salida=lambda s: None)
+            self.assertFalse(r.ok)
+        self.assertTrue((boveda / "Privado").exists())
+
+    def test_puntos_de_montaje_con_espacios(self):
+        from archcleaner import seguridad
+        linea = "50 40 8:1 / /mnt/Mi\\040Disco rw,relatime shared:5 - ext4 /dev/sda1 rw\n"
+        with mock.patch("pathlib.Path.read_text", return_value=linea):
+            self.assertEqual(seguridad._puntos_de_montaje(), ["/mnt/Mi Disco"])
+
     def test_restos_de_sistema_vitales_bloqueados(self):
         for r in ("/etc/fstab", "/etc/hostname", "/etc/machine-id", "/etc/pacman.conf", "/var/lib/pacman",
                   "/var/lib", "/etc", "/etc/systemd/system"):

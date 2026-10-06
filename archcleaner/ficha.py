@@ -318,7 +318,7 @@ def _restos_sistema(ficha: Ficha, otros: set[str]) -> None:
                 continue
             if subprocess.run(["pacman", "-Qo", str(ruta)], capture_output=True).returncode == 0:
                 continue  # es de un paquete: si es del programa, lo borra pacman
-            items.append(Item(str(ruta), _peso(ruta), comando=["rm", "-r", "--", str(ruta)]))
+            items.append(Item(str(ruta), _peso(ruta), comando=["rm", "-r", "--one-file-system", "--", str(ruta)]))
     if items:
         ficha.restos.append(_hallazgo_restos(
             tr("Restos en el sistema"), Nivel.SEGURO, items, Modo.COMANDO,

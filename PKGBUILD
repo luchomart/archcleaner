@@ -1,6 +1,6 @@
 # Maintainer: luchomart <87014410+luchomart@users.noreply.github.com>
 pkgname=archcleaner
-pkgver=0.10.0
+pkgver=0.10.1
 pkgrel=1
 pkgdesc="Analizador y limpiador de disco para Arch Linux: qué ocupa espacio, qué es basura y desinstalaciones sin rastro (TUI)"
 arch=('any')

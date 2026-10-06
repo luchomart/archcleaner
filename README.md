@@ -35,13 +35,14 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
 - **Una última barrera revisa cada ruta** antes de borrarla ([`seguridad.py`](archcleaner/seguridad.py)):
   nunca toca el sistema, tu home, tus carpetas personales (Documentos, Imágenes…), discos enteros
   ni archivos que pertenezcan a un paquete instalado, aunque algo lo pida por error. Los enlaces
-  simbólicos se borran como enlaces, nunca lo que hay del otro lado.
+  simbólicos se borran como enlaces, nunca lo que hay del otro lado, y nunca borra una carpeta
+  que tenga un disco montado adentro.
 - **Los paquetes vitales están protegidos** (kernel, systemd, pacman, escritorio, drivers,
   bootloader…): aparecen con 🔒 y no se pueden desinstalar desde acá.
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
-- **Código abierto y con tests:** 68 tests automáticos (las reglas de seguridad, y la app manejada
+- **Código abierto y con tests:** 71 tests automáticos (las reglas de seguridad, y la app manejada
   con clics en un home falso) corren en cada cambio.
 
 ## 📸 Capturas

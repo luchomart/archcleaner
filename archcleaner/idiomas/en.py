@@ -56,6 +56,7 @@ TEXTOS: dict[str, str] = {
     "fuera de las zonas donde ArchCleaner puede borrar": "outside the areas where ArchCleaner may delete",
     "módulos del kernel que estás usando": "modules of the kernel you're running",
     "archivo vital del sistema": "vital system file",
+    "adentro hay un disco montado ({ruta})": "there is a mounted drive inside ({ruta})",
     "pertenece a un paquete instalado (lo maneja pacman)": "belongs to an installed package (pacman handles it)",
     "adentro hay un archivo de un paquete instalado ({archivo})":
         "it contains a file from an installed package ({archivo})",

@@ -113,7 +113,7 @@ def _modulos_viejos(ctx: Contexto) -> list[Hallazgo]:
             tr("Sistema"), tr("Módulos de un kernel que ya no está ({version})", version=d.name), Nivel.REVISAR, peso,
             tr("Quedaron de un kernel desinstalado o actualizado (a veces los deja DKMS). "
               "No es el kernel que estás usando ahora."),
-            rutas=[d], limpieza=Limpieza(Modo.COMANDO, [["rm", "-r", "--", str(d)]], sudo=True), incompleto=inc,
+            rutas=[d], limpieza=Limpieza(Modo.COMANDO, [["rm", "-r", "--one-file-system", "--", str(d)]], sudo=True), incompleto=inc,
         ))
     return res
 

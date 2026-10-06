@@ -6,11 +6,14 @@ Reglas:
 - Nunca se toca la raíz de una zona, un punto de montaje, ni tus carpetas personales
   (Documentos, Imágenes...) en sí.
 - Los enlaces simbólicos se tratan como enlaces: se borra el enlace, nunca a dónde apunta.
+- Nunca se borra una carpeta que tenga un disco montado adentro (borrar recursivo entraría en él).
+- En las carpetas del sistema, nada que sea de un paquete instalado (ej. módulos de otro kernel).
 """
 
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -87,6 +90,8 @@ class Verificador:
             return tr("carpeta personal protegida (se puede borrar lo de adentro, no la carpeta)")
         if not p.is_symlink() and os.path.ismount(s):
             return tr("es un punto de montaje (un disco entero)")
+        if not vaciar and not p.is_symlink() and (montado := _montaje_adentro(s)):
+            return tr("adentro hay un disco montado ({ruta})", ruta=montado)
 
         en_home = dentro_de(s, str(self.home))
         en_disco = any(dentro_de(s, z) for z in ZONAS_DISCOS) and s.count("/") >= 3
@@ -97,6 +102,8 @@ class Verificador:
             return tr("fuera de las zonas donde ArchCleaner puede borrar")
         if dentro_de(s, "/usr/lib/modules") and (p.name == self.kernel_actual or s.count("/") != 4):
             return tr("módulos del kernel que estás usando")
+        if en_sistema and _de_un_paquete(s):
+            return tr("pertenece a un paquete instalado (lo maneja pacman)")
         return None
 
     @staticmethod
@@ -106,11 +113,31 @@ class Verificador:
 
         if p.name in CRITICOS_ETC or str(p) in PROHIBIDAS:
             return tr("archivo vital del sistema")
-        if subprocess.run(["pacman", "-Qo", str(p)], capture_output=True).returncode == 0:
+        if _de_un_paquete(str(p)):
             return tr("pertenece a un paquete instalado (lo maneja pacman)")
         if p.is_dir() and not p.is_symlink() and (ajeno := _archivo_de_paquete_adentro(p)):
             return tr("adentro hay un archivo de un paquete instalado ({archivo})", archivo=ajeno)
         return None
+
+
+def _de_un_paquete(ruta: str) -> bool:
+    return subprocess.run(["pacman", "-Qo", ruta], capture_output=True).returncode == 0
+
+
+def _puntos_de_montaje() -> list[str]:
+    """Todos los puntos de montaje (se lee cada vez: un disco se puede montar en cualquier momento)."""
+    try:
+        lineas = Path("/proc/self/mountinfo").read_text().splitlines()
+    except OSError:
+        return []
+    # el 5º campo es el punto de montaje; los espacios y demás vienen como \040 (octal)
+    return [re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), c[4])
+            for c in (linea.split() for linea in lineas) if len(c) > 4]
+
+
+def _montaje_adentro(carpeta: str) -> str | None:
+    """Un disco montado DENTRO de la carpeta (no ella misma): borrarla recursivamente lo vaciaría."""
+    return next((m for m in _puntos_de_montaje() if m != carpeta and dentro_de(m, carpeta)), None)
 
 
 def _archivo_de_paquete_adentro(carpeta: Path, maximo: int = 5000) -> str | None:

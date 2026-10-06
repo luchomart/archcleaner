@@ -65,7 +65,10 @@ def _cache(ctx: Contexto) -> list[Hallazgo]:
 
 
 def _huerfanos() -> Hallazgo | None:
-    nombres = (ejecutar(["pacman", "-Qdtq"]) or "").split()
+    from ..ficha import PROTEGIDOS  # import tardío: ficha importa cosas pesadas
+
+    # un paquete vital nunca se propone, aunque haya quedado como huérfano
+    nombres = [n for n in (ejecutar(["pacman", "-Qdtq"]) or "").split() if n not in PROTEGIDOS]
     if not nombres:
         return None
     info = ejecutar(["pacman", "-Qi", *nombres]) or ""
