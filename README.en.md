@@ -1,8 +1,14 @@
-# 🧹 ArchCleaner
+<p align="center"><img src="docs/logo.svg" width="128" alt="ArchCleaner logo"></p>
+
+<h1 align="center">ArchCleaner</h1>
+
+<p align="center">
 
 [![tests](https://github.com/luchomart/archcleaner/actions/workflows/tests.yml/badge.svg)](https://github.com/luchomart/archcleaner/actions/workflows/tests.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)
+
+</p>
 
 **🇦🇷 [Leer en español](README.md)**
 
@@ -195,6 +201,7 @@ safety check. Outside your home folder and your data drives, Explore is read-onl
 ```bash
 python -m unittest discover -s tests     # tests (they never touch your files: they use a fake home)
 python docs/generar_capturas.py          # regenerates the README screenshots (both languages)
+python docs/generar_logo.py              # regenerates the logo and the social preview image
 ```
 
 The code is in Spanish. Main modules:

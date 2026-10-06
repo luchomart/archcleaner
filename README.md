@@ -1,8 +1,14 @@
-# 🧹 ArchCleaner
+<p align="center"><img src="docs/logo.svg" width="128" alt="Logo de ArchCleaner"></p>
+
+<h1 align="center">ArchCleaner</h1>
+
+<p align="center">
 
 [![tests](https://github.com/luchomart/archcleaner/actions/workflows/tests.yml/badge.svg)](https://github.com/luchomart/archcleaner/actions/workflows/tests.yml)
 [![licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
 ![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)
+
+</p>
 
 **🇬🇧 [Read in English](README.en.md)**
 
@@ -146,6 +152,7 @@ barrera de seguridad; fuera de tu home y de tus discos de datos es solo para mir
 ```bash
 python -m unittest discover -s tests     # los tests (no tocan tus archivos: usan un home falso)
 python docs/generar_capturas.py          # regenera las capturas del README (español e inglés)
+python docs/generar_logo.py              # regenera el logo y la imagen para compartir
 ```
 
 ```
