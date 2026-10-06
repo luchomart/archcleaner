@@ -1,0 +1,5 @@
+# Crea una carpeta que pacman NO conoce: el típico resto que queda después de desinstalar.
+post_install() {
+    mkdir -p /var/lib/archcleaner-prueba
+    echo "datos que el programa creó por su cuenta" > /var/lib/archcleaner-prueba/estado.db
+}

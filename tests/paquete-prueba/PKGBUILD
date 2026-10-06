@@ -1,0 +1,43 @@
+# Paquete de mentira para probar `archcleaner desinstalar` de punta a punta. No hace nada útil.
+pkgname=archcleaner-prueba
+pkgver=1.0
+pkgrel=1
+pkgdesc="Programa de prueba para ArchCleaner (se puede desinstalar sin miedo)"
+arch=('any')
+license=('MIT')
+depends=('sl')             # dependencia chiquita: al desinstalar queda huérfana y se va con él
+install=archcleaner-prueba.install
+source=()
+
+package() {
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/archcleaner-prueba" <<'SCRIPT'
+#!/bin/sh
+# Programa de prueba de ArchCleaner: guarda cosas en tu home para que haya "restos" que limpiar.
+mkdir -p "$HOME/.config/archcleaner-prueba" "$HOME/.local/share/archcleaner-prueba" "$HOME/.cache/archcleaner-prueba"
+date > "$HOME/.config/archcleaner-prueba/config.ini"
+date > "$HOME/.local/share/archcleaner-prueba/datos.txt"
+head -c 5M /dev/urandom > "$HOME/.cache/archcleaner-prueba/cache.bin"
+if [ "$1" = "--servicio" ]; then exec sleep infinity; fi
+echo "Hola, soy archcleaner-prueba. Dejé configuración, datos y caché en tu home."
+SCRIPT
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/archcleaner-prueba.desktop" <<'DESKTOP'
+[Desktop Entry]
+Name=ArchCleaner Prueba
+Comment=Programa de prueba (se puede desinstalar sin miedo)
+Exec=archcleaner-prueba
+Icon=edit-clear
+Terminal=true
+Type=Application
+Categories=Utility;
+DESKTOP
+    install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/archcleaner-prueba.service" <<'UNIT'
+[Unit]
+Description=Servicio de prueba de ArchCleaner (no hace nada)
+
+[Service]
+ExecStart=/usr/bin/archcleaner-prueba --servicio
+
+[Install]
+WantedBy=default.target
+UNIT
+}

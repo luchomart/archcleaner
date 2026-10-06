@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# lo que genera makepkg
+*.pkg.tar.*
+*.tar.gz
+/src/
+/pkg/
+tests/paquete-prueba/src/
+tests/paquete-prueba/pkg/
