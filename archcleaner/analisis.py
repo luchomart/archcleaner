@@ -14,6 +14,7 @@ from .contexto import Contexto
 from .detectores import DETECTORES
 from .escaner import escanear
 from .modelo import Hallazgo, Nivel
+from .i18n import tr
 
 
 # avance(fracción 0..1, etapa, detalle): para dibujar una barra de progreso.
@@ -109,14 +110,14 @@ def analizar(
     medidos: dict[str, int] = {}
 
     for i, (raiz, excluir) in enumerate(raices, 1):
-        etapa = f"Escaneando {raiz}  ({i} de {len(raices)})"
+        etapa = tr("Escaneando {raiz}  ({i} de {n})", raiz=raiz, i=i, n=len(raices))
         aviso(etapa)
         esperado = barra.esperado_de(raiz, medidos)
         parte = barra.parte[raiz]
 
         def progreso(n: int, d: str, b: int, raiz=raiz, etapa=etapa, esperado=esperado, parte=parte) -> None:
-            aviso(f"Escaneando {raiz}  ·  {n:,} carpetas  ·  {d}")
-            barra.dentro(parte, b / esperado, etapa, f"{n:,} carpetas  ·  {d}")
+            aviso(tr("Escaneando {raiz}  ·  {n:,} carpetas  ·  {d}", raiz=raiz, n=n, d=d))
+            barra.dentro(parte, b / esperado, etapa, tr("{n:,} carpetas  ·  {d}", n=n, d=d))
 
         barra.dentro(parte, 0, etapa)
         inicio = time.monotonic()
@@ -130,8 +131,8 @@ def analizar(
     res.tiempos["detectores"] = {}
     for nombre, modulo in DETECTORES:
         aviso(f"Buscando: {nombre}")
-        detalle = f"revisando: {nombre}"
-        barra.mostrar(barra.hecho, "Buscando qué sobra", detalle)
+        detalle = tr("revisando: {nombre}", nombre=tr(nombre))
+        barra.mostrar(barra.hecho, tr("Buscando qué sobra"), detalle)
         inicio = time.monotonic()
         listo = threading.Event()
 
@@ -139,7 +140,7 @@ def analizar(
             # mientras el detector trabaja, la barra avanza sola según lo que tardó la vez anterior
             while not listo.wait(0.2):
                 sub = (time.monotonic() - inicio) / barra.segundos_detector[nombre]
-                barra.dentro(barra.parte_detector[nombre], sub * 0.9, "Buscando qué sobra", detalle)
+                barra.dentro(barra.parte_detector[nombre], sub * 0.9, tr("Buscando qué sobra"), detalle)
 
         latido = threading.Thread(target=latir, daemon=True) if avance else None
         if latido:
@@ -147,7 +148,7 @@ def analizar(
         try:
             res.hallazgos += modulo.detectar(ctx)
         except Exception:  # un detector roto no tiene que tirar abajo todo el análisis
-            ctx.avisos.append(f"Falló el detector «{nombre}»:\n{traceback.format_exc(limit=3)}")
+            ctx.avisos.append(tr("Falló el detector «{nombre}»:", nombre=tr(nombre)) + "\n" + traceback.format_exc(limit=3))
         finally:
             listo.set()
             if latido:

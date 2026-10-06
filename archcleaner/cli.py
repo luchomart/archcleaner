@@ -10,47 +10,76 @@ from rich.console import Console
 
 from . import __version__
 
-FASES_PENDIENTES: dict[str, str] = {}
+# (nombre en español, nombre en inglés): los dos funcionan siempre; la ayuda muestra el del idioma actual.
+COMANDOS = {
+    "analizar": "analyze", "limpiar": "clean", "desinstalar": "uninstall", "explorar": "explore", "crecio": "grew",
+}
+
+
+def _idioma_pedido(argv: list[str]) -> str | None:
+    """`--lang en` / `--lang=en` se mira antes que nada: los textos de la ayuda ya dependen del idioma."""
+    for i, a in enumerate(argv):
+        if a == "--lang" and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith("--lang="):
+            return a.split("=", 1)[1]
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    from . import i18n
+    if pedido := _idioma_pedido(argv):
+        i18n.elegir(pedido)
+    from .i18n import tr
+
+    en = i18n.idioma == "en"
+
+    def comando(sub, es: str, ayuda: str):
+        nombre, alias = (COMANDOS[es], es) if en else (es, COMANDOS[es])
+        return sub.add_parser(nombre, aliases=[alias], help=ayuda)
+
+    def opcion(p, es: str, en_: str, **kw):
+        p.add_argument(*((en_, es) if en else (es, en_)), dest=es.lstrip("-").replace("-", "_"), **kw)
+
     parser = argparse.ArgumentParser(
         prog="archcleaner",
-        description="Analizador y limpiador de disco para Arch Linux. Por defecto no borra nada.",
+        description=tr("Analizador y limpiador de disco para Arch Linux. Por defecto no borra nada."),
     )
     parser.add_argument("--version", action="version", version=f"ArchCleaner {__version__}")
-    sub = parser.add_subparsers(dest="comando", metavar="COMANDO")
+    parser.add_argument("--lang", choices=i18n.IDIOMAS, help=tr("idioma de la interfaz (por defecto, el del sistema)"))
+    sub = parser.add_subparsers(dest="comando", metavar="COMANDO" if not en else "COMMAND")
 
-    p = sub.add_parser("analizar", help="informe de qué ocupa espacio y qué se puede limpiar (solo lectura)")
-    p.add_argument("--rapido", action="store_true",
-                   help="no recorre los discos enteros: solo las fuentes de basura conocidas")
-    p.add_argument("--no-guardar", action="store_true", help="no guarda el informe en ~/.local/state/archcleaner")
+    p = comando(sub, "analizar", tr("informe de qué ocupa espacio y qué se puede limpiar (solo lectura)"))
+    opcion(p, "--rapido", "--quick", action="store_true",
+           help=tr("no recorre los discos enteros: solo las fuentes de basura conocidas"))
+    opcion(p, "--no-guardar", "--no-save", action="store_true",
+           help=tr("no guarda el informe en ~/.local/state/archcleaner"))
 
-    p = sub.add_parser("limpiar", help="elegir qué borrar (con resumen y confirmación antes de tocar nada)")
-    p.add_argument("--simulacro", action="store_true", help="muestra qué se haría, sin borrar nada")
+    p = comando(sub, "limpiar", tr("elegir qué borrar (con resumen y confirmación antes de tocar nada)"))
+    opcion(p, "--simulacro", "--dry-run", action="store_true", help=tr("muestra qué se haría, sin borrar nada"))
 
-    p = sub.add_parser("desinstalar", help="desinstalar un programa sin dejar rastro (con ficha, plan y confirmación)")
-    p.add_argument("programa", nargs="?", help="nombre del programa (si no, se elige de una lista)")
-    p.add_argument("--simulacro", action="store_true", help="muestra la ficha y el plan, sin tocar nada")
+    p = comando(sub, "desinstalar", tr("desinstalar un programa sin dejar rastro (con ficha, plan y confirmación)"))
+    p.add_argument("programa", nargs="?", metavar=tr("programa"),
+                   help=tr("nombre del programa (si no, se elige de una lista)"))
+    opcion(p, "--simulacro", "--dry-run", action="store_true", help=tr("muestra la ficha y el plan, sin tocar nada"))
 
-    p = sub.add_parser("explorar", help="navegar carpetas ordenadas por peso (con la app)")
-    p.add_argument("programa", nargs="?", metavar="carpeta", help="carpeta donde empezar (si no, se elige el disco)")
+    p = comando(sub, "explorar", tr("navegar carpetas ordenadas por peso (con la app)"))
+    p.add_argument("programa", nargs="?", metavar=tr("carpeta"),
+                   help=tr("carpeta donde empezar (si no, se elige el disco)"))
 
-    p = sub.add_parser("crecio", help="qué creció y qué se achicó desde un análisis anterior (solo lectura)")
-    p.add_argument("--dias", type=float, help="comparar con el análisis de hace N días (si no, con el anterior)")
-
-    for nombre, fase in FASES_PENDIENTES.items():
-        sub.add_parser(nombre, help=f"(todavía no: {fase})")
+    p = comando(sub, "crecio", tr("qué creció y qué se achicó desde un análisis anterior (solo lectura)"))
+    opcion(p, "--dias", "--days", type=float,
+           help=tr("comparar con el análisis de hace N días (si no, con el anterior)"))
 
     args = parser.parse_args(argv)
+    # el comando, siempre con su nombre en español (el que usa el resto del código)
+    args.comando = {v: k for k, v in COMANDOS.items()}.get(args.comando, args.comando)
     if args.comando is None and not sys.stdout.isatty():
         parser.print_help()
         return 0
-    if args.comando in FASES_PENDIENTES:
-        print(f"«{args.comando}» todavía no está hecho ({FASES_PENDIENTES[args.comando]}).")
-        return 1
     if os.geteuid() == 0:
-        print("No corras ArchCleaner como root: corre como tu usuario y pide sudo solo cuando lo necesita.")
+        print(tr("No corras ArchCleaner como root: corre como tu usuario y pide sudo solo cuando lo necesita."))
         return 1
     if args.comando == "analizar":
         return _analizar(args)
@@ -71,16 +100,17 @@ def _analizar(args: argparse.Namespace) -> int:
     from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn
 
     from .analisis import analizar
-    from .util import acortar
     from .estado import guardar_analisis, guardar_tiempos, tiempos_previos
+    from .i18n import tr
     from .informe import guardar, mostrar
+    from .util import acortar
 
     consola = Console(record=True)
     barra = Progress(SpinnerColumn(), TextColumn("[bold cyan]{task.description}"), BarColumn(bar_width=24),
                      TaskProgressColumn(), TimeRemainingColumn(), TextColumn("[dim]{task.fields[detalle]}"),
                      console=consola, transient=True)
     with barra:
-        tarea = barra.add_task("Arrancando…", total=1.0, detalle="")
+        tarea = barra.add_task(tr("Arrancando…"), total=1.0, detalle="")
 
         def avance(fraccion: float, etapa: str, detalle: str) -> None:
             barra.update(tarea, completed=fraccion, description=etapa, detalle=acortar(detalle.rsplit("·", 1)[-1].strip(), 30))
@@ -99,7 +129,7 @@ def _analizar(args: argparse.Namespace) -> int:
     mostrar(res, consola, comparacion)
     if not args.no_guardar:
         ruta = guardar(consola)
-        consola.print(f"\n[dim]Informe guardado en {ruta}[/dim]")
+        consola.print("\n[dim]" + tr("Informe guardado en {ruta}", ruta=ruta) + "[/dim]")
     return 0
 
 

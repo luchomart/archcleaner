@@ -27,15 +27,16 @@ from .analisis import Resultado
 from .escaner import Nodo, arbol
 from .modelo import Hallazgo, Modo, Nivel
 from .util import humano
+from .i18n import tr
 
 MAX_DETALLE = 6
 CARPETA_INFORMES = Path.home() / ".local/state/archcleaner/informes"
 
 ICONO_MODO = {
-    Modo.BORRAR: ("borrar", "green"),
-    Modo.VACIAR: ("vaciar", "green"),
-    Modo.PAPELERA: ("papelera", "yellow"),
-    Modo.COMANDO: ("comando", "cyan"),
+    Modo.BORRAR: (tr("borrar"), "green"),
+    Modo.VACIAR: (tr("vaciar"), "green"),
+    Modo.PAPELERA: (tr("papelera"), "yellow"),
+    Modo.COMANDO: (tr("comando"), "cyan"),
 }
 
 
@@ -85,8 +86,8 @@ def _escribir(res: Resultado, consola: Console, pie: bool, comparacion=None) -> 
     consola.print()
     consola.print(Rule(style="grey35"))
     consola.print(Text.assemble(
-        ("  Para limpiar: ", "dim"), ("archcleaner limpiar", "bold cyan"),
-        ("   ·   los 🟢 vienen tildados, los 🟡 los elegís vos", "dim"),
+        (tr("  Para limpiar: "), "dim"), (tr("archcleaner limpiar"), "bold cyan"),
+        (tr("   ·   los 🟢 vienen tildados, los 🟡 los elegís vos"), "dim"),
     ))
 
 
@@ -94,10 +95,10 @@ def _escribir(res: Resultado, consola: Console, pie: bool, comparacion=None) -> 
 
 def _encabezado() -> Panel:
     titulo = Text.assemble(
-        ("🧹  ARCHCLEANER", "bold cyan"), (" by luchomart", "italic #af87ff"), ("   análisis de disco", "bold"),
-        ("   ·   " + datetime.now().strftime("%d/%m/%Y %H:%M"), "dim"),
+        ("🧹  ARCHCLEANER", "bold cyan"), (" by luchomart", "italic #af87ff"), (tr("   análisis de disco"), "bold"),
+        ("   ·   " + datetime.now().strftime(tr("%d/%m/%Y %H:%M")), "dim"),
     )
-    sub = Text("Modo solo lectura: no se borró nada.", style="green")
+    sub = Text(tr("Modo solo lectura: no se borró nada."), style="green")
     return Panel(Group(titulo, sub), box=box.HEAVY, border_style="cyan", padding=(0, 2))
 
 
@@ -114,9 +115,9 @@ def _tablero(res: Resultado) -> Table:
 def _discos(res: Resultado) -> Panel:
     puntos = ["/"] + [e.raiz for e in res.ctx.escaneos if os.path.ismount(e.raiz) and e.raiz != "/"]
     t = Table(box=None, padding=(0, 1), expand=True, show_edge=False)
-    t.add_column("Disco", style="bold")
-    t.add_column("Uso", ratio=1)
-    t.add_column("Libre", justify="right")
+    t.add_column(tr("Disco"), style="bold")
+    t.add_column(tr("Uso"), ratio=1)
+    t.add_column(tr("Libre"), justify="right")
     for p in dict.fromkeys(puntos):
         try:
             u = shutil.disk_usage(p)
@@ -124,8 +125,8 @@ def _discos(res: Resultado) -> Panel:
             continue
         f = u.used / u.total if u.total else 0
         uso = barra(f, 16, _color_uso(f)) + Text(f" {f:.0%}", style=_color_uso(f))
-        t.add_row(p, uso, Text.assemble((humano(u.free), "bold"), (f" de {humano(u.total)}", "dim")))
-    return Panel(t, title="[bold]💽 Discos[/]", title_align="left", border_style="grey50", box=box.ROUNDED)
+        t.add_row(p, uso, Text.assemble((humano(u.free), "bold"), (tr(" de {total}", total=humano(u.total)), "dim")))
+    return Panel(t, title=tr("[bold]💽 Discos[/]"), title_align="left", border_style="grey50", box=box.ROUNDED)
 
 
 def _total(res: Resultado, nivel: Nivel) -> int:
@@ -136,10 +137,10 @@ def _resumen(res: Resultado) -> Panel:
     t = Table.grid(padding=(0, 1))
     t.add_column()
     t.add_column(justify="right")
-    t.add_row(Text("🟢 Sin riesgo", style="green"), Text(humano(_total(res, Nivel.SEGURO)), style="bold green"))
-    t.add_row(Text("🟡 Si revisás", style="yellow"), Text(humano(_total(res, Nivel.REVISAR)), style="bold yellow"))
-    t.add_row(Text("(gigantes y Workshop aparte)", style="dim"), "")
-    return Panel(t, title="[bold]✨ Podés liberar[/]", title_align="left", border_style="grey50", box=box.ROUNDED)
+    t.add_row(Text(tr("🟢 Sin riesgo"), style="green"), Text(humano(_total(res, Nivel.SEGURO)), style="bold green"))
+    t.add_row(Text(tr("🟡 Si revisás"), style="yellow"), Text(humano(_total(res, Nivel.REVISAR)), style="bold yellow"))
+    t.add_row(Text(tr("(gigantes y Workshop aparte)"), style="dim"), "")
+    return Panel(t, title=tr("[bold]✨ Podés liberar[/]"), title_align="left", border_style="grey50", box=box.ROUNDED)
 
 
 # ── 3. Índice ─────────────────────────────────────────────────────────────────
@@ -148,10 +149,10 @@ def _indice(res: Resultado) -> Panel:
     t = Table(box=box.SIMPLE_HEAD, expand=True, padding=(0, 1), header_style="bold dim")
     t.add_column("#", justify="right", style="dim", width=3)
     t.add_column("", width=2)
-    t.add_column("Peso", justify="right", width=9)
-    t.add_column("Qué es", ratio=1, overflow="ellipsis", no_wrap=True)
-    t.add_column("Categoría", style="dim", width=11)
-    t.add_column("Cómo", width=13)
+    t.add_column(tr("Peso"), justify="right", width=9)
+    t.add_column(tr("Qué es"), ratio=1, overflow="ellipsis", no_wrap=True)
+    t.add_column(tr("Categoría"), style="dim", width=11)
+    t.add_column(tr("Cómo"), width=13)
 
     niveles = [n for n in Nivel if any(h.nivel == n for h in res.hallazgos)]
     for nivel in niveles:
@@ -162,7 +163,7 @@ def _indice(res: Resultado) -> Panel:
                 peso.stylize("italic")
             t.add_row(str(h.numero), nivel.icono, peso, h.titulo, h.categoria, _como(h),
                       end_section=(i == len(grupo) - 1 and nivel != niveles[-1]))
-    return Panel(t, title="[bold]📋 Qué encontré[/]", title_align="left", border_style="grey50", box=box.ROUNDED)
+    return Panel(t, title=tr("[bold]📋 Qué encontré[/]"), title_align="left", border_style="grey50", box=box.ROUNDED)
 
 
 def _como(h: Hallazgo) -> Text:
@@ -201,18 +202,18 @@ def _tarjeta(h: Hallazgo) -> Panel:
         if len(h.detalle) > MAX_DETALLE:
             resto = h.detalle[MAX_DETALLE:]
             t.add_row(Text(humano(sum(i.peso or 0 for i in resto)), style="dim"),
-                      Text(f"… y {len(resto)} más", style="dim"))
+                      Text(tr("… y {n} más", n=len(resto)), style="dim"))
         partes += [Text(""), t]
 
     if h.limpieza:
-        linea = Text.assemble(("\n▸ ", h.nivel.color), ("Cómo se limpia: ", "bold"), h.limpieza.describir())
+        linea = Text.assemble(("\n▸ ", h.nivel.color), (tr("Cómo se limpia: "), "bold"), h.limpieza.describir())
         if h.limpieza.sudo:
             linea.append("  [SUDO]", style="bold magenta")
         if h.limpieza.cerrar:
-            linea.append(f"  (con {', '.join(h.limpieza.cerrar)} cerrado)", style="dim")
+            linea.append(tr("  (con {programas} cerrado)", programas=", ".join(h.limpieza.cerrar)), style="dim")
         partes.append(linea)
     if h.incompleto:
-        partes.append(Text("+ hay carpetas sin permiso de lectura: puede pesar más.", style="dim italic"))
+        partes.append(Text(tr("+ hay carpetas sin permiso de lectura: puede pesar más."), style="dim italic"))
 
     titulo = Text.assemble((f" #{h.numero} ", "bold reverse " + h.nivel.color), " ", (h.titulo, "bold"), " ")
     subtitulo = Text.assemble((f" {humano(h.peso)} ", f"bold {h.nivel.color}"), (f"· {h.categoria} ", "dim"))
@@ -226,20 +227,21 @@ def _arboles(res: Resultado, consola: Console) -> None:
     if not res.ctx.escaneos:
         return
     consola.print()
-    consola.print(Rule(Text(" 📂  DÓNDE ESTÁ EL PESO ", style="bold cyan"), style="cyan"))
-    consola.print(Text("  Carpetas de más de 1 GB, de mayor a menor. Las barras son relativas al total del disco.",
+    consola.print(Rule(Text(tr(" 📂  DÓNDE ESTÁ EL PESO "), style="bold cyan"), style="cyan"))
+    consola.print(Text(tr("  Carpetas de más de 1 GB, de mayor a menor. Las barras son relativas al total del disco."),
                        style="dim"))
     home = str(res.ctx.home)
     for esc in res.ctx.escaneos:
         if not esc.peso:
             continue
         raiz = arbol(esc, profundidad=4, max_hijos=6)
-        nombre = "~ (tu home)" if raiz.ruta == home else "/ (sistema, sin tu home)" if raiz.ruta == "/" else raiz.ruta
+        nombre = tr("~ (tu home)") if raiz.ruta == home else \
+            tr("/ (sistema, sin tu home)") if raiz.ruta == "/" else raiz.ruta
         t = Tree(Text.assemble((nombre, "bold cyan"), ("  " + humano(raiz.peso), "bold")), guide_style="grey35")
         _ramas(t, raiz, raiz.peso, res)
         partes: list = [t]
         if esc.sin_permiso:
-            partes.append(Text(f"{len(esc.sin_permiso)} carpetas sin permiso de lectura no se pudieron medir.",
+            partes.append(Text(tr("{n} carpetas sin permiso de lectura no se pudieron medir.", n=len(esc.sin_permiso)),
                                style="dim italic"))
         consola.print(Panel(Group(*partes), border_style="grey35", box=box.ROUNDED, padding=(0, 1)))
 
@@ -255,7 +257,7 @@ def _ramas(t: Tree, nodo: Nodo, total: int, res: Resultado) -> None:
 def _avisos(res: Resultado, consola: Console) -> None:
     if not res.ctx.avisos:
         return
-    consola.print(Panel(Text("\n".join(res.ctx.avisos), style="yellow"), title="⚠ Avisos",
+    consola.print(Panel(Text("\n".join(res.ctx.avisos), style="yellow"), title=tr("⚠ Avisos"),
                         border_style="yellow", box=box.ROUNDED))
 
 

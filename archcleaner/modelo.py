@@ -6,6 +6,7 @@ import shlex
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from .i18n import tr
 
 
 class Nivel(Enum):
@@ -24,9 +25,9 @@ class Nivel(Enum):
     @property
     def nombre(self) -> str:
         return {
-            "seguro": "Basura segura",
-            "revisar": "Para revisar",
-            "info": "Solo informativo",
+            "seguro": tr("Basura segura"),
+            "revisar": tr("Para revisar"),
+            "info": tr("Solo informativo"),
         }[self.value]
 
 
@@ -66,9 +67,9 @@ class Limpieza:
         if self.modo == Modo.COMANDO:
             return " ; ".join(shlex.join(c) for c in self.comandos)
         return {
-            Modo.BORRAR: "se borra (se regenera solo)",
-            Modo.VACIAR: "se vacía el contenido",
-            Modo.PAPELERA: "va a la papelera (recuperable)",
+            Modo.BORRAR: tr("se borra (se regenera solo)"),
+            Modo.VACIAR: tr("se vacía el contenido"),
+            Modo.PAPELERA: tr("va a la papelera (recuperable)"),
         }[self.modo]
 
 

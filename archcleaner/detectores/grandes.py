@@ -15,6 +15,7 @@ from pathlib import Path
 from ..contexto import Contexto
 from ..modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from ..util import dentro_de
+from ..i18n import tr
 
 LIMITE = 25
 NOMBRES_INSTALADOR = {"setup.exe", "install.exe", "installer.exe"}
@@ -42,9 +43,9 @@ def detectar(ctx: Contexto) -> list[Hallazgo]:
             rutas.append(Path(d))
             ctx.reclamar(d)
         res.append(Hallazgo(
-            "Archivos", "Instaladores de juegos/programas", Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
-            "Carpetas con un instalador (setup.exe) y archivos enormes al lado. Si el juego o programa "
-            "ya está instalado y funciona, el instalador sobra (salvo que lo quieras para reinstalar).",
+            tr("Archivos"), tr("Instaladores de juegos/programas"), Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
+            tr("Carpetas con un instalador (setup.exe) y archivos enormes al lado. Si el juego o programa "
+              "ya está instalado y funciona, el instalador sobra (salvo que lo quieras para reinstalar)."),
             rutas=rutas, detalle=items_ordenados(detalle),
             limpieza=Limpieza(Modo.PAPELERA, por_item=True),
         ))
@@ -58,10 +59,10 @@ def detectar(ctx: Contexto) -> list[Hallazgo]:
             detalle.append(Item(f"{os.path.basename(d)}  ({_corto(ctx, os.path.dirname(d))})", peso, Path(d)))
             ctx.reclamar(d)
         res.append(Hallazgo(
-            "Archivos", "Juegos instalados por fuera de Steam", Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
-            "No es basura: son juegos instalados a mano (Hydra, repacks, GOG...). Se muestran porque "
-            "pesan mucho: si ya no jugás alguno, borrar su carpeta libera todo eso. Ojo: con Proton/Wine "
-            "las partidas suelen guardarse en el prefijo, no acá, así que borrar el juego no las borra.",
+            tr("Archivos"), tr("Juegos instalados por fuera de Steam"), Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
+            tr("No es basura: son juegos instalados a mano (Hydra, repacks, GOG...). Se muestran porque "
+              "pesan mucho: si ya no jugás alguno, borrar su carpeta libera todo eso. Ojo: con Proton/Wine "
+              "las partidas suelen guardarse en el prefijo, no acá, así que borrar el juego no las borra."),
             rutas=[i.ruta for i in detalle], detalle=items_ordenados(detalle),
             limpieza=Limpieza(Modo.PAPELERA, por_item=True),
         ))
@@ -69,9 +70,9 @@ def detectar(ctx: Contexto) -> list[Hallazgo]:
     sueltos = sorted((a for a in restantes if not any(dentro_de(a[1], d) for d in juegos)), reverse=True)
     if sueltos:
         res.append(Hallazgo(
-            "Archivos", "Archivos gigantes (más de 1 GB)", Nivel.REVISAR, sum(p for p, _ in sueltos),
-            "No se sabe si sobran: pueden ser juegos instalados por fuera de Steam, máquinas virtuales, "
-            "videos o ISOs. Fijate si te conviene quedártelos.",
+            tr("Archivos"), tr("Archivos gigantes (más de 1 GB)"), Nivel.REVISAR, sum(p for p, _ in sueltos),
+            tr("No se sabe si sobran: pueden ser juegos instalados por fuera de Steam, máquinas virtuales, "
+              "videos o ISOs. Fijate si te conviene quedártelos."),
             rutas=[Path(r) for _, r in sueltos[:LIMITE]],
             detalle=[Item(_corto(ctx, r), p, Path(r)) for p, r in sueltos[:LIMITE]], suma=False,
             limpieza=Limpieza(Modo.PAPELERA, por_item=True),

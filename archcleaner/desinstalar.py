@@ -23,8 +23,9 @@ from .modelo import Hallazgo, Item, Nivel
 from .programas import Programa
 from .util import ejecutar as correr
 from .util import humano
+from .i18n import tr
 
-SECCIONES = {Nivel.SEGURO: "Restos seguros", Nivel.REVISAR: "Restos probables", Nivel.INFO: "Info"}
+SECCIONES = {Nivel.SEGURO: tr("Restos seguros"), Nivel.REVISAR: tr("Restos probables"), Nivel.INFO: tr("Info")}
 
 
 def buscar(programas: list[Programa], busqueda: str | None) -> Programa | None:
@@ -85,7 +86,7 @@ def verificar(ficha: Ficha, restos: list[Tarea], libre_antes: dict[str, int]) ->
     prog = ficha.programa
     v = Verificacion()
     if prog.origen != "appimage" and sigue_instalado(prog):
-        v.quedan.append(f"{prog.nombre} sigue instalado")
+        v.quedan.append(tr("{nombre} sigue instalado", nombre=prog.nombre))
     for t in restos:
         v.quedan += [str(r) for r in t.rutas if os.path.lexists(r)]
         for cmd in t.comandos:
@@ -125,31 +126,31 @@ def panel_ficha(ficha: Ficha) -> Panel:
         t.add_column(justify="right", style="cyan", width=9)
         t.add_column()
         for i in ficha.paquetes[:10]:
-            t.add_row(humano(i.peso), i.nombre + ("" if i.nombre == prog.id else "  (dependencia que queda sin uso)"))
+            t.add_row(humano(i.peso), i.nombre + ("" if i.nombre == prog.id else tr("  (dependencia que queda sin uso)")))
         if len(ficha.paquetes) > 10:
-            t.add_row("", Text(f"… y {len(ficha.paquetes) - 10} más", style="dim"))
-        partes += [Text(""), Text("📦 Se va con pacman:", style="bold"), t]
+            t.add_row("", Text(tr("… y {n} más", n=len(ficha.paquetes) - 10), style="dim"))
+        partes += [Text(""), Text(tr("📦 Se va con pacman:"), style="bold"), t]
 
     if ficha.servicios:
-        partes += [Text(""), Text("⚙️  Servicios que se apagan antes:", style="bold")]
-        partes += [Text(f"   {s.unidad}" + (" (de usuario)" if s.usuario else "") + (" · activo ahora" if s.activo else ""))
+        partes += [Text(""), Text(tr("⚙️  Servicios que se apagan antes:"), style="bold")]
+        partes += [Text(f"   {s.unidad}" + (tr(" (de usuario)") if s.usuario else "") + (tr(" · activo ahora") if s.activo else ""))
                    for s in ficha.servicios]
 
     if ficha.restos:
-        partes += [Text(""), Text("🧩 Restos que encontré:", style="bold")]
+        partes += [Text(""), Text(tr("🧩 Restos que encontré:"), style="bold")]
         for h in ficha.restos:
             partes.append(Text.assemble(f"   {h.nivel.icono} ", (f"{humano(h.peso):>9}  ", "bold"), h.titulo,
                                         (f"  ({len(h.detalle)})", "dim")))
     elif not ficha.bloqueo:
-        partes += [Text(""), Text("🧩 No encontré restos fuera del paquete.", style="green")]
+        partes += [Text(""), Text(tr("🧩 No encontré restos fuera del paquete."), style="green")]
 
     for a in ficha.avisos:
         partes.append(Text(f"⚠ {a}", style="bold yellow"))
     if ficha.bloqueo:
-        partes += [Text(""), Text(f"⛔ No se puede desinstalar: {ficha.bloqueo}", style="bold red")]
+        partes += [Text(""), Text(tr("⛔ No se puede desinstalar: {motivo}", motivo=ficha.bloqueo), style="bold red")]
     else:
-        partes += [Text(""), Text.assemble(("Liberarías hasta ", ""), (humano(ficha.peso_total), "bold green"))]
-    return Panel(Group(*partes), title="[bold]📋 Ficha[/]", title_align="left",
+        partes += [Text(""), Text.assemble((tr("Liberarías hasta "), ""), (humano(ficha.peso_total), "bold green"))]
+    return Panel(Group(*partes), title=tr("[bold]📋 Ficha[/]"), title_align="left",
                  border_style="red" if ficha.bloqueo else "cyan", box=box.ROUNDED, padding=(0, 1))
 
 
@@ -157,13 +158,14 @@ def panel_plan(ficha: Ficha, restos: list[Tarea]) -> Panel:
     prog = ficha.programa
     pasos: list[Text] = []
     for s in ficha.servicios:
-        pasos.append(Text(f"apagar {s.unidad}" + ("" if s.usuario else "  [SUDO]")))
+        pasos.append(Text(tr("apagar {unidad}", unidad=s.unidad) + ("" if s.usuario else "  [SUDO]")))
     if prog.origen in ("repo", "aur"):
-        pasos.append(Text(f"pacman -Rns {prog.id}  [SUDO]  (quita {len(ficha.paquetes)} paquetes; pacman te pide confirmación)"))
+        pasos.append(Text(tr("pacman -Rns {paquete}  [SUDO]  (quita {n} paquetes; pacman te pide confirmación)",
+                             paquete=prog.id, n=len(ficha.paquetes))))
     elif prog.origen == "flatpak":
-        pasos.append(Text(f"flatpak uninstall --delete-data {prog.id}  + runtimes sin uso"))
+        pasos.append(Text(tr("flatpak uninstall --delete-data {app}  + runtimes sin uso", app=prog.id)))
     elif prog.origen == "steam":
-        pasos.append(Text("Steam desinstala el juego (se abre su ventana)"))
+        pasos.append(Text(tr("Steam desinstala el juego (se abre su ventana)")))
     for t in restos:
         lim = t.hallazgo.limpieza
         assert lim
@@ -171,24 +173,27 @@ def panel_plan(ficha: Ficha, restos: list[Tarea]) -> Panel:
         pasos.append(Text.assemble(f"{t.hallazgo.nivel.icono} {t.hallazgo.titulo} ", (f"({n})  ", "dim"),
                                    (humano(t.peso) + "  ", "bold"), (lim.describir(), "dim"),
                                    ("  [SUDO]" if lim.sudo else "", "magenta")))
-    pasos.append(Text("🔎 verificar que no quede rastro"))
+    pasos.append(Text(tr("🔎 verificar que no quede rastro")))
     filas = [Text.assemble((f"{i}. ", "dim"), p) for i, p in enumerate(pasos, 1)]
-    return Panel(Group(*filas), title=f"[bold]📝 Plan: desinstalar {prog.nombre}[/]", title_align="left",
+    return Panel(Group(*filas), title="[bold]" + tr("📝 Plan: desinstalar {nombre}", nombre=prog.nombre) + "[/]",
+                 title_align="left",
                  border_style="cyan", box=box.ROUNDED, padding=(0, 1))
 
 
 def panel_verificacion(v: Verificacion, nombre: str) -> Panel:
     filas: list = []
     if v.limpio:
-        filas.append(Text("✔ Rastro: 0", style="bold green"))
+        filas.append(Text(tr("✔ Rastro: 0"), style="bold green"))
     for q in v.quedan:
-        filas.append(Text(f"✘ quedó: {q}", style="yellow"))
+        filas.append(Text(tr("✘ quedó: {que}", que=q), style="yellow"))
     for h in v.nuevos:
         for i in h.detalle:
-            filas.append(Text(f"• apareció después: {i.nombre} ({humano(i.peso)})", style="yellow"))
+            filas.append(Text(tr("• apareció después: {nombre} ({peso})", nombre=i.nombre, peso=humano(i.peso)),
+                              style="yellow"))
     if v.conservados:
-        filas.append(Text(f"• {len(v.conservados)} cosas que elegiste conservar siguen ahí "
-                          f"({humano(sum(i.peso or 0 for i in v.conservados))}).", style="dim"))
-    filas.append(Text.assemble(("Espacio liberado: ", "bold"), (humano(v.liberado), "bold green")))
-    return Panel(Group(*filas), title=f"[bold]🔎 Verificación: {nombre}[/]", title_align="left",
+        filas.append(Text(tr("• {n} cosas que elegiste conservar siguen ahí ({peso}).", n=len(v.conservados),
+                             peso=humano(sum(i.peso or 0 for i in v.conservados))), style="dim"))
+    filas.append(Text.assemble((tr("Espacio liberado: "), "bold"), (humano(v.liberado), "bold green")))
+    return Panel(Group(*filas), title="[bold]" + tr("🔎 Verificación: {nombre}", nombre=nombre) + "[/]",
+                 title_align="left",
                  border_style="green" if v.limpio else "yellow", box=box.ROUNDED, padding=(0, 1))

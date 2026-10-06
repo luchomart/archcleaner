@@ -23,6 +23,7 @@ from .. import __author__, __version__
 from ..estado import hace, leer, ultima_limpieza
 from ..historial import chispa, libre_en_el_tiempo
 from ..util import humano
+from ..i18n import tr
 
 # Fuente "Calvin S" de figlet, letra por letra.
 _LETRAS = {
@@ -34,14 +35,14 @@ _DEGRADE = ["#5fd7ff", "#5fafff", "#5f87ff", "#875fff", "#af5fff"]
 
 OPCIONES = [
     # (id, ícono, nombre, descripción, atajo, disponible)
-    ("analizar", "🔍", "Analizar", "informe completo de qué ocupa espacio · solo lectura", "a", True),
-    ("limpiar", "🧹", "Limpiar", "elegís qué borrar, ves el plan y confirmás", "l", True),
-    ("simulacro", "🧪", "Simulacro", "lo mismo que Limpiar, pero sin borrar nada", "s", True),
-    ("desinstalar", "📦", "Desinstalar", "un programa sin dejar rastro · con ficha y plan", "d", True),
-    ("actualizar", "🔄", "Actualizar", "vuelve a analizar el disco y refresca las tarjetas", "r", True),
-    ("explorar", "📂", "Explorar", "navegar carpetas ordenadas por peso (y borrar)", "e", True),
-    ("crecio", "📈", "Qué creció", "comparar con análisis anteriores: qué creció y qué se achicó", "c", True),
-    ("salir", "🚪", "Salir", "", "q", True),
+    ("analizar", "🔍", tr("Analizar"), tr("informe completo de qué ocupa espacio · solo lectura"), "a", True),
+    ("limpiar", "🧹", tr("Limpiar"), tr("elegís qué borrar, ves el plan y confirmás"), "l", True),
+    ("simulacro", "🧪", tr("Simulacro"), tr("lo mismo que Limpiar, pero sin borrar nada"), "s", True),
+    ("desinstalar", "📦", tr("Desinstalar"), tr("un programa sin dejar rastro · con ficha y plan"), "d", True),
+    ("actualizar", "🔄", tr("Actualizar"), tr("vuelve a analizar el disco y refresca las tarjetas"), "r", True),
+    ("explorar", "📂", tr("Explorar"), tr("navegar carpetas ordenadas por peso (y borrar)"), "e", True),
+    ("crecio", "📈", tr("Qué creció"), tr("comparar con análisis anteriores: qué creció y qué se achicó"), "c", True),
+    ("salir", "🚪", tr("Salir"), "", "q", True),
 ]
 
 
@@ -52,7 +53,7 @@ def logo() -> Text:
         for i, letra in enumerate(palabra):
             t.append(_LETRAS[letra][fila], style=f"bold {_DEGRADE[i * len(_DEGRADE) // len(palabra)]}")
         t.append("\n")
-    t.append("analizador y limpiador de disco para Arch Linux", style="dim")
+    t.append(tr("analizador y limpiador de disco para Arch Linux"), style="dim")
     t.append(f"  ·  v{__version__}  ·  ", style="dim")
     t.append(f"by {__author__}", style="italic #af87ff")
     return t
@@ -89,26 +90,26 @@ def tarjeta_discos() -> Table:
             continue
         f = u.used / u.total if u.total else 0
         t.add_row(p, _barra(f, 10) + Text(f" {f:>4.0%}", style=_color_uso(f)),
-                  Text.assemble((humano(u.free) + " ", "bold"), ("libres", "dim")))
+                  Text.assemble((humano(u.free) + " ", "bold"), (tr("libres"), "dim")))
     return t
 
 
 def subtitulo_discos() -> str | None:
     """Mini gráfica del espacio libre en / según los últimos análisis: «libre en / ▆▆▅▄»."""
     valores = libre_en_el_tiempo("/")
-    return f"libre en / {chispa(valores)}" if len(valores) >= 2 else None
+    return tr("libre en / {grafica}", grafica=chispa(valores)) if len(valores) >= 2 else None
 
 
 def tarjeta_analisis(datos: dict) -> Text | Group:
     a = datos.get("analisis")
     if not a:
-        cuerpo: Text | Group = Text("Todavía no analizaste.\nElegí 🔍 Analizar.", style="dim")
+        cuerpo: Text | Group = Text(tr("Todavía no analizaste.\nElegí 🔍 Analizar."), style="dim")
     else:
         filas = Table.grid(padding=(0, 1))
         filas.add_column()
         filas.add_column(justify="right")
-        filas.add_row(Text("🟢 sin riesgo", style="green"), Text(humano(a["seguro"]), style="bold green"))
-        filas.add_row(Text("🟡 si revisás", style="yellow"), Text(humano(a["revisar"]), style="bold yellow"))
+        filas.add_row(Text(tr("🟢 sin riesgo"), style="green"), Text(humano(a["seguro"]), style="bold green"))
+        filas.add_row(Text(tr("🟡 si revisás"), style="yellow"), Text(humano(a["revisar"]), style="bold yellow"))
         principal = a.get("principales", [])[:1]
         extra = Text(f"\n{principal[0][1]}", style="dim", overflow="ellipsis", no_wrap=True) \
             if principal else Text("")
@@ -118,12 +119,12 @@ def tarjeta_analisis(datos: dict) -> Text | Group:
 
 def tarjeta_limpieza(lim: dict | None) -> Text:
     if not lim:
-        cuerpo = Text("Todavía no limpiaste nada.", style="dim")
+        cuerpo = Text(tr("Todavía no limpiaste nada."), style="dim")
     else:
         cuerpo = Text.assemble(
             ("~" if lim.get("estimado") else "", "bold green"),
-            (humano(lim["liberado"]) + " ", "bold green"), ("liberados\n\n", ""),
-            (f"{lim['ok']} de {lim['total']} tareas ok", "dim"),
+            (humano(lim["liberado"]) + " ", "bold green"), (tr("liberados") + "\n\n", ""),
+            (tr("{ok} de {total} tareas ok", ok=lim["ok"], total=lim["total"]), "dim"),
         )
     return cuerpo
 
@@ -131,7 +132,7 @@ def tarjeta_limpieza(lim: dict | None) -> Text:
 class MenuScreen(Screen[None]):
     BINDINGS = [Binding(atajo, f"elegir('{id_}')", nombre, show=False)
                 for id_, _, nombre, _, atajo, disponible in OPCIONES if disponible] + [
-        Binding("escape", "elegir('salir')", "Salir", show=False),
+        Binding("escape", "elegir('salir')", tr("Salir"), show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -139,15 +140,16 @@ class MenuScreen(Screen[None]):
         with Vertical(id="todo"):
             yield Static(logo(), id="logo")
             with Horizontal(id="tarjetas"):
-                yield self._tarjeta("t-discos", "💽 Discos", tarjeta_discos(), subtitulo_discos())
+                yield self._tarjeta("t-discos", tr("💽 Discos"), tarjeta_discos(), subtitulo_discos())
                 a, lim = datos.get("analisis"), ultima_limpieza()
-                yield self._tarjeta("t-analisis", "📊 Último análisis", tarjeta_analisis(datos),
+                yield self._tarjeta("t-analisis", tr("📊 Último análisis"), tarjeta_analisis(datos),
                                     hace(a["fecha"]) if a else None)
-                yield self._tarjeta("t-limpieza", "✨ Última limpieza", tarjeta_limpieza(lim),
+                yield self._tarjeta("t-limpieza", tr("✨ Última limpieza"), tarjeta_limpieza(lim),
                                     hace(lim["fecha"]) if lim else None)
             yield OptionList(*self._opciones(), id="menu")
-            yield Static(Text.assemble(("↑↓ ", "bold"), "moverse    ", ("enter ", "bold"), "elegir    ",
-                                       ("a l s d e c r ", "bold"), "atajos    ", ("q ", "bold"), "salir"), id="pie")
+            yield Static(Text.assemble(("↑↓ ", "bold"), tr("moverse    "), ("enter ", "bold"), tr("elegir    "),
+                                       ("a l s d e c r ", "bold"), tr("atajos    "), ("q ", "bold"), tr("salir")),
+                         id="pie")
 
     @staticmethod
     def _tarjeta(id_: str, titulo: str, contenido, subtitulo: str | None = None) -> Static:

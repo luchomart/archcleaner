@@ -17,7 +17,8 @@ from datetime import datetime
 from pathlib import Path
 
 from .modelo import Hallazgo, Modo
-from .seguridad import Verificador
+from .seguridad import YA_NO_EXISTE, Verificador
+from .i18n import tr
 
 LOG = Path.home() / ".local/state/archcleaner/acciones.log"
 
@@ -81,7 +82,8 @@ def ejecutar(tarea: Tarea, verif: Verificador, salida: Callable[[str], None] = p
     lim = tarea.hallazgo.limpieza
     assert lim
     if abiertos := procesos_abiertos(lim.cerrar):
-        return _registrar(Resultado(tarea, False, f"salteado: cerrá {', '.join(abiertos)} y volvé a intentar"))
+        return _registrar(Resultado(tarea, False, tr("salteado: cerrá {programas} y volvé a intentar",
+                                                    programas=", ".join(abiertos))))
 
     if tarea.modo == Modo.COMANDO:
         res = _comandos(tarea, verif, correr)
@@ -96,7 +98,7 @@ def _rutas(tarea: Tarea, verif: Verificador, salida: Callable[[str], None]) -> R
     for ruta in tarea.rutas:
         if not os.path.lexists(ruta):
             no_estaban += 1  # lo borraste a mano (o lo borró otra cosa) después del análisis: no es un error
-            salida(f"  {ruta}  (ya no estaba)")
+            salida(f"  {ruta}  " + tr("(ya no estaba)"))
             continue
         objetivos = _contenido(ruta) if tarea.modo == Modo.VACIAR else [ruta]
         if tarea.modo == Modo.VACIAR and (motivo := verif.problema(ruta, vaciar=True)):
@@ -117,8 +119,10 @@ def _rutas(tarea: Tarea, verif: Verificador, salida: Callable[[str], None]) -> R
             except (OSError, subprocess.CalledProcessError) as e:
                 errores.append(f"{obj}: {e}")
         salida(f"  {ruta}")
-    verbo = "a la papelera" if tarea.modo == Modo.PAPELERA else "borrados"
-    mensaje = f"{hechos} elementos {verbo}" + (f" · {no_estaban} ya no estaban" if no_estaban else "")
+    mensaje = (tr("{n} elementos a la papelera", n=hechos) if tarea.modo == Modo.PAPELERA
+               else tr("{n} elementos borrados", n=hechos))
+    if no_estaban:
+        mensaje += tr(" · {n} ya no estaban", n=no_estaban)
     return Resultado(tarea, not errores, mensaje, errores)
 
 
@@ -154,7 +158,7 @@ def _forzar_permiso(funcion, ruta, exc, objetivo: str) -> None:
 def _a_papelera(ruta: Path) -> None:
     r = subprocess.run(["gio", "trash", "--", str(ruta)], capture_output=True, text=True)
     if r.returncode != 0:
-        raise OSError(r.stderr.strip() or "gio trash falló")
+        raise OSError(r.stderr.strip() or tr("gio trash falló"))
 
 
 def _comandos(tarea: Tarea, verif: Verificador, correr: Correr) -> Resultado:
@@ -163,8 +167,9 @@ def _comandos(tarea: Tarea, verif: Verificador, correr: Correr) -> Resultado:
     for cmd in tarea.comandos:
         if cmd[0] == "rm":  # los rm también pasan por la verificación, ruta por ruta
             for arg in cmd[1:]:
-                if not arg.startswith("-") and (motivo := verif.problema(arg)) and motivo != "ya no existe":
-                    return Resultado(tarea, False, f"bloqueado por seguridad: {arg}: {motivo}")
+                if not arg.startswith("-") and (motivo := verif.problema(arg)) and motivo != YA_NO_EXISTE:
+                    return Resultado(tarea, False, tr("bloqueado por seguridad: {ruta}: {motivo}", ruta=arg,
+                                                     motivo=motivo))
     hechos = no_estaban = 0
     for cmd in tarea.comandos:
         cmd = _sin_lo_que_ya_no_existe(cmd)
@@ -174,11 +179,12 @@ def _comandos(tarea: Tarea, verif: Verificador, correr: Correr) -> Resultado:
         completo = (["sudo"] if lim.sudo else []) + cmd
         codigo = correr(completo)
         if codigo != 0:
-            return Resultado(tarea, False, f"«{' '.join(cmd[:3])}…» terminó con error ({codigo})")
+            return Resultado(tarea, False, tr("«{comando}…» terminó con error ({codigo})",
+                                             comando=" ".join(cmd[:3]), codigo=codigo))
         hechos += 1
     if no_estaban and not hechos:
-        return Resultado(tarea, True, "ya no estaba (se borró antes)")
-    return Resultado(tarea, True, "hecho" + (f" · {no_estaban} ya no estaban" if no_estaban else ""))
+        return Resultado(tarea, True, tr("ya no estaba (se borró antes)"))
+    return Resultado(tarea, True, tr("hecho") + (tr(" · {n} ya no estaban", n=no_estaban) if no_estaban else ""))
 
 
 def _sin_lo_que_ya_no_existe(cmd: list[str]) -> list[str] | None:

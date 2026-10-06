@@ -21,6 +21,7 @@ from textual.widgets import Button, ProgressBar, RichLog, Static
 
 from ..seguridad import Verificador
 from .comunes import ESPACIO, barra_botones, cabecera
+from ..i18n import tr
 
 
 @dataclass
@@ -83,7 +84,7 @@ class Ctx:
                     print(f"\n\033[1;36m── ArchCleaner ──\033[0m {aviso}\n", flush=True)
                     return subprocess.run(cmd).returncode
             except SuspendNotSupported:
-                self.log("  Esta terminal no permite apartar la app para responder: corré el comando a mano:\n  "
+                self.log(tr("  Esta terminal no permite apartar la app para responder: corré el comando a mano:\n  ")
                          + " ".join(cmd), "yellow")
                 return 1
         return self.app.call_from_thread(hacer)
@@ -91,18 +92,18 @@ class Ctx:
     def asegurar_sudo(self) -> bool:
         if subprocess.run(["sudo", "-n", "-v"], capture_output=True).returncode == 0:
             return True
-        return self.en_terminal(["sudo", "-v"], "🔐 Necesito permisos de administrador: escribí tu contraseña.") == 0
+        return self.en_terminal(["sudo", "-v"], tr("🔐 Necesito permisos de administrador: escribí tu contraseña.")) == 0
 
     def correr(self, cmd: list[str]) -> int:
         """Runner para acciones.ejecutar: pacman va a la terminal; el resto se muestra en el log."""
         con_sudo = cmd[0] == "sudo"
         programa = cmd[1] if con_sudo else cmd[0]
         if programa == "pacman":
-            return self.en_terminal(cmd, "pacman te muestra lo que quita y pide confirmación. "
-                                         "Después ArchCleaner vuelve solo.")
+            return self.en_terminal(cmd, tr("pacman te muestra lo que quita y pide confirmación. "
+                                            "Después ArchCleaner vuelve solo."))
         if con_sudo:
             if not self.asegurar_sudo():
-                self.log("  sin permisos de administrador: salteado", "yellow")
+                self.log(tr("  sin permisos de administrador: salteado"), "yellow")
                 return 1
             cmd = ["sudo", "-n", *cmd[1:]]
         try:
@@ -119,7 +120,7 @@ class Ctx:
 
 
 class Ejecucion(Screen[None]):
-    BINDINGS = [Binding("escape", "volver", "Volver", show=False)]
+    BINDINGS = [Binding("escape", "volver", tr("Volver"), show=False)]
 
     def __init__(self, titulo: str, pasos: list[Paso], al_terminar: Callable[[Ctx, list[bool]], list] | None = None):
         super().__init__()
@@ -127,11 +128,11 @@ class Ejecucion(Screen[None]):
         self.terminado = False
 
     def compose(self) -> ComposeResult:
-        yield cabecera(self.titulo, "Trabajando… no cierres la terminal.")
+        yield cabecera(self.titulo, tr("Trabajando… no cierres la terminal."))
         yield ProgressBar(total=len(self.pasos), show_eta=False, id="progreso")
         yield Static("", id="actual", classes="actual")
         yield RichLog(wrap=True, id="log", classes="log")
-        yield barra_botones([("menu", "🏠 Inicio", "primary"), ESPACIO, ("salir", "Salir", "default")])
+        yield barra_botones([("menu", tr("🏠 Inicio"), "primary"), ESPACIO, ("salir", tr("Salir"), "default")])
 
     def on_mount(self) -> None:
         for b in self.query(Button):
@@ -148,25 +149,25 @@ class Ejecucion(Screen[None]):
             try:
                 ok, mensaje = paso.hacer(ctx)
             except Exception:  # un paso roto no tiene que colgar la pantalla
-                ok, mensaje = False, "error inesperado:\n" + traceback.format_exc(limit=3)
+                ok, mensaje = False, tr("error inesperado:\n") + traceback.format_exc(limit=3)
             oks.append(ok)
             ctx.log(("  ✔ " if ok else "  ✘ ") + mensaje, "green" if ok else "yellow")
             self.app.call_from_thread(self.query_one("#progreso", ProgressBar).advance, 1)
             if not ok and paso.critico:
-                ctx.log("\nEse paso era necesario para seguir: me detengo acá.", "bold yellow")
+                ctx.log(tr("\nEse paso era necesario para seguir: me detengo acá."), "bold yellow")
                 break
         if self.al_terminar:
             try:
                 for r in self.al_terminar(ctx, oks):
                     ctx.log(r)
             except Exception:
-                ctx.log("error al terminar:\n" + traceback.format_exc(limit=3), "yellow")
+                ctx.log(tr("error al terminar:\n") + traceback.format_exc(limit=3), "yellow")
         self.app.call_from_thread(self._fin, all(oks) and len(oks) == len(self.pasos))
 
     def _fin(self, todo_ok: bool) -> None:
         self.terminado = True
         self.query_one("#actual", Static).update(
-            Text("✅ Listo." if todo_ok else "⚠ Terminó con avisos: revisá el detalle.",
+            Text(tr("✅ Listo.") if todo_ok else tr("⚠ Terminó con avisos: revisá el detalle."),
                  style="bold green" if todo_ok else "bold yellow"))
         for b in self.query(Button):
             b.disabled = False

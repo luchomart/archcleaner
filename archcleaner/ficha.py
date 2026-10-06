@@ -17,6 +17,7 @@ from .escaner import escanear
 from .modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from .programas import Programa
 from .util import ejecutar, leer_vdf
+from .i18n import tr
 
 # Paquetes que nunca se desinstalan desde acá (ni directamente ni arrastrados por otro).
 PROTEGIDOS = {
@@ -136,8 +137,8 @@ def _pacman(ficha: Ficha) -> None:
         info = ejecutar(["pacman", "-Qi", nombre]) or ""
         m = re.search(r"^Required By\s*:\s*(.+)$", info, re.M)
         ficha.requerido_por = [] if not m or m.group(1).strip() == "None" else m.group(1).split()
-        ficha.bloqueo = ("Otros paquetes lo necesitan: " + ", ".join(ficha.requerido_por)) if ficha.requerido_por \
-            else f"pacman no lo puede quitar: {sal.stderr.strip()}"
+        ficha.bloqueo = tr("Otros paquetes lo necesitan: {paquetes}", paquetes=", ".join(ficha.requerido_por)) \
+            if ficha.requerido_por else tr("pacman no lo puede quitar: {error}", error=sal.stderr.strip())
         return
     for linea in sal.stdout.splitlines():
         if "|" in linea:
@@ -145,10 +146,10 @@ def _pacman(ficha: Ficha) -> None:
             ficha.paquetes.append(Item(n, int(s) if s.isdigit() else None))
     nombres = {i.nombre for i in ficha.paquetes}
     if prohibidos := nombres & PROTEGIDOS:
-        ficha.bloqueo = f"Se llevaría paquetes vitales del sistema: {', '.join(sorted(prohibidos))}"
+        ficha.bloqueo = tr("Se llevaría paquetes vitales del sistema: {paquetes}", paquetes=", ".join(sorted(prohibidos)))
         return
     if len(nombres) > MUCHOS_PAQUETES:
-        ficha.avisos.append(f"Arrastra {len(nombres)} paquetes: revisá bien la lista antes de confirmar.")
+        ficha.avisos.append(tr("Arrastra {n} paquetes: revisá bien la lista antes de confirmar.", n=len(nombres)))
     ficha.comandos = [["pacman", "-Rns", nombre]]
     ficha.sudo = True
 
@@ -193,7 +194,7 @@ def _appimage(ficha: Ficha, home: Path) -> None:
     ruta = Path(ficha.programa.id)
     # El AppImage en sí va como un "resto" seguro más: se borra con el mismo ejecutor (y su seguridad).
     ficha.restos.append(Hallazgo(
-        "AppImage", "El AppImage", Nivel.SEGURO, ficha.programa.peso, "El archivo del programa.",
+        tr("AppImage"), tr("El AppImage"), Nivel.SEGURO, ficha.programa.peso, tr("El archivo del programa."),
         rutas=[ruta], detalle=[Item(ruta.name, ficha.programa.peso, ruta)],
         limpieza=Limpieza(Modo.PAPELERA, por_item=True),
     ))
@@ -204,22 +205,22 @@ def _steam(ficha: Ficha) -> None:
     ficha.comandos = [["xdg-open", f"steam://uninstall/{appid}"]]
     sa = Path(ficha.programa.extra["biblioteca"]) / "steamapps"
     seguros, probables = [], []
-    for sub, que in (("shadercache", "shader cache"), ("workshop/content", "contenido de Workshop")):
+    for sub, que in (("shadercache", tr("shader cache")), ("workshop/content", tr("contenido de Workshop"))):
         d = sa / sub / appid
         if d.is_dir():
             seguros.append(Item(f"{que} ({d})", _peso(d), d))
     compat = sa / "compatdata" / appid
     if compat.is_dir() and (_peso(compat) or 0) >= 1024**2:
-        marca = "  ⚠ puede tener partidas guardadas" if _tiene_partidas(compat) else ""
-        probables.append(Item(f"prefijo de Proton ({compat}){marca}", _peso(compat), compat))
+        marca = tr("  ⚠ puede tener partidas guardadas") if _tiene_partidas(compat) else ""
+        probables.append(Item(tr("prefijo de Proton ({ruta}){marca}", ruta=compat, marca=marca), _peso(compat), compat))
     if seguros:
-        ficha.restos.append(_hallazgo_restos("Restos de Steam", Nivel.SEGURO, seguros, Modo.BORRAR,
-                                             "Shaders y Workshop del juego: se borran al desinstalar."))
+        ficha.restos.append(_hallazgo_restos(tr("Restos de Steam"), Nivel.SEGURO, seguros, Modo.BORRAR,
+                                             tr("Shaders y Workshop del juego: se borran al desinstalar.")))
     if probables:
         ficha.restos.append(_hallazgo_restos(
-            "Prefijo de Proton", Nivel.REVISAR, probables, Modo.PAPELERA,
-            "El 'Windows falso' del juego. Ahí suelen estar las PARTIDAS GUARDADAS (si el juego no usa "
-            "la nube de Steam). Tildalo solo si no vas a volver a jugarlo."))
+            tr("Prefijo de Proton"), Nivel.REVISAR, probables, Modo.PAPELERA,
+            tr("El 'Windows falso' del juego. Ahí suelen estar las PARTIDAS GUARDADAS (si el juego no usa "
+              "la nube de Steam). Tildalo solo si no vas a volver a jugarlo.")))
 
 
 def _nombres_de_otros(ficha: Ficha) -> set[str]:
@@ -270,7 +271,7 @@ def _restos_home(ficha: Ficha, home: Path, otros: set[str]) -> None:
             certeza = "probable"  # en juegos, lo del home suelen ser partidas guardadas
         if _tiene_carpeta_partidas(ruta):
             certeza = "probable"
-            nombre += "  ⚠ puede tener partidas guardadas"
+            nombre += tr("  ⚠ puede tener partidas guardadas")
         item = Item(nombre, _peso(ruta), ruta)
         (seguros if certeza == "seguro" else probables).append(item)
 
@@ -296,12 +297,12 @@ def _restos_home(ficha: Ficha, home: Path, otros: set[str]) -> None:
 
     if seguros:
         ficha.restos.append(_hallazgo_restos(
-            "Restos en tu home (seguros)", Nivel.SEGURO, seguros, Modo.PAPELERA,
-            "Configuraciones, datos y caché con el nombre exacto del programa."))
+            tr("Restos en tu home (seguros)"), Nivel.SEGURO, seguros, Modo.PAPELERA,
+            tr("Configuraciones, datos y caché con el nombre exacto del programa.")))
     if probables:
         ficha.restos.append(_hallazgo_restos(
-            "Restos en tu home (probables)", Nivel.REVISAR, probables, Modo.PAPELERA,
-            "Se parecen al nombre del programa, pero no es seguro que sean suyos. Revisalos."))
+            tr("Restos en tu home (probables)"), Nivel.REVISAR, probables, Modo.PAPELERA,
+            tr("Se parecen al nombre del programa, pero no es seguro que sean suyos. Revisalos.")))
 
 
 def _restos_sistema(ficha: Ficha, otros: set[str]) -> None:
@@ -320,9 +321,9 @@ def _restos_sistema(ficha: Ficha, otros: set[str]) -> None:
             items.append(Item(str(ruta), _peso(ruta), comando=["rm", "-r", "--", str(ruta)]))
     if items:
         ficha.restos.append(_hallazgo_restos(
-            "Restos en el sistema", Nivel.SEGURO, items, Modo.COMANDO,
-            "Archivos que el programa creó por su cuenta (configs, servicios, datos) y que pacman no "
-            "conoce, así que no los borraría nunca.", sudo=True))
+            tr("Restos en el sistema"), Nivel.SEGURO, items, Modo.COMANDO,
+            tr("Archivos que el programa creó por su cuenta (configs, servicios, datos) y que pacman no "
+              "conoce, así que no los borraría nunca."), sudo=True))
 
 
 def _caches(ficha: Ficha, home: Path) -> None:
@@ -335,19 +336,19 @@ def _caches(ficha: Ficha, home: Path) -> None:
         archivos = [cache / e for e in _listar(cache) if patron.match(e)]
         if archivos:
             versiones = sum(1 for a in archivos if not a.name.endswith(".sig"))
-            items.append(Item(f"{n} ({versiones} versiones en la caché de pacman)",
+            items.append(Item(tr("{paquete} ({n} versiones en la caché de pacman)", paquete=n, n=versiones),
                               sum(_peso(a) or 0 for a in archivos),
                               comando=["rm", "-f", "--", *map(str, archivos)]))
     if items:
         ficha.restos.append(_hallazgo_restos(
-            "Caché de pacman", Nivel.SEGURO, items, Modo.COMANDO,
-            "Los instaladores descargados de estos paquetes. Sin el programa, no sirven.", sudo=True))
+            tr("Caché de pacman"), Nivel.SEGURO, items, Modo.COMANDO,
+            tr("Los instaladores descargados de estos paquetes. Sin el programa, no sirven."), sudo=True))
     if ficha.programa.origen == "aur":
         d = home / ".cache/yay" / ficha.programa.id
         if d.is_dir():
             ficha.restos.append(_hallazgo_restos(
-                "Caché de yay", Nivel.SEGURO, [Item(str(d).replace(str(home), "~"), _peso(d), d)], Modo.BORRAR,
-                "Lo que yay descargó y compiló para este paquete."))
+                tr("Caché de yay"), Nivel.SEGURO, [Item(str(d).replace(str(home), "~"), _peso(d), d)], Modo.BORRAR,
+                tr("Lo que yay descargó y compiló para este paquete.")))
 
 
 # ── Ayudantes ────────────────────────────────────────────────────────────────
@@ -360,8 +361,8 @@ def carpetas_propias(home: Path) -> list[Path]:
 def _hallazgo_restos(titulo: str, nivel: Nivel, items: list[Item], modo: Modo, explicacion: str,
                      sudo: bool = False) -> Hallazgo:
     items = items_ordenados(items)
-    texto = {Modo.BORRAR: "se borra", Modo.COMANDO: "se borra con sudo rm"}.get(modo)
-    return Hallazgo("Desinstalar", titulo, nivel, sum(i.peso or 0 for i in items), explicacion,
+    texto = {Modo.BORRAR: tr("se borra"), Modo.COMANDO: tr("se borra con sudo rm")}.get(modo)
+    return Hallazgo(tr("Desinstalar"), titulo, nivel, sum(i.peso or 0 for i in items), explicacion,
                     rutas=[i.ruta for i in items if i.ruta], detalle=items,
                     limpieza=Limpieza(modo, sudo=sudo, por_item=True, texto=texto))
 

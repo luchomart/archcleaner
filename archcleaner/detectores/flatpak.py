@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..contexto import Contexto
 from ..modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from ..util import ejecutar, parsear_tamano
+from ..i18n import tr
 
 MINIMO = 10 * 1024**2
 
@@ -32,10 +33,10 @@ def detectar(ctx: Contexto) -> list[Hallazgo]:
         if detalle:
             detalle = items_ordenados(detalle)
             res.append(Hallazgo(
-                "Flatpak", "Datos de apps Flatpak que ya no están instaladas", Nivel.REVISAR,
+                tr("Flatpak"), tr("Datos de apps Flatpak que ya no están instaladas"), Nivel.REVISAR,
                 sum(i.peso or 0 for i in detalle),
-                "Al desinstalar un Flatpak sin --delete-data, sus datos quedan en ~/.var/app. "
-                "Puede haber partidas guardadas o configs que quieras conservar: mirá antes de borrar.",
+                tr("Al desinstalar un Flatpak sin --delete-data, sus datos quedan en ~/.var/app. "
+                  "Puede haber partidas guardadas o configs que quieras conservar: mirá antes de borrar."),
                 rutas=rutas, detalle=detalle, limpieza=Limpieza(Modo.PAPELERA, por_item=True),
                 incompleto=incompleto,
             ))
@@ -63,9 +64,9 @@ def _runtimes_sin_uso(apps: set[str]) -> Hallazgo | None:
     if not sin_uso:
         return None
     return Hallazgo(
-        "Flatpak", "Runtimes de Flatpak que ninguna app usa", Nivel.SEGURO,
+        tr("Flatpak"), tr("Runtimes de Flatpak que ninguna app usa"), Nivel.SEGURO,
         sum(r[2] or 0 for r in sin_uso),
-        "Son las 'bases' que necesitan las apps Flatpak. Estas no las usa ninguna app instalada.",
-        detalle=[Item(f"{n} ({b})", t) for n, b, t in sin_uso],
+        tr("Son las 'bases' que necesitan las apps Flatpak. Estas no las usa ninguna app instalada."),
+        detalle=[Item(f"{n} ({b})", tam) for n, b, tam in sin_uso],
         limpieza=Limpieza(Modo.COMANDO, [["flatpak", "uninstall", "--unused", "-y"]]),
     )

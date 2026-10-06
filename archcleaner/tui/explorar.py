@@ -34,6 +34,7 @@ from ..util import acortar, dentro_de, humano
 from ..estado import hace, leer
 from ..historial import Foto
 from .comunes import ESPACIO, ConfirmarBorrado, Dialogo, barra_botones, cabecera
+from ..i18n import tr
 
 
 MINIMO_FILA = 10 * 1024**2  # cambios más chicos no se marcan en la lista
@@ -51,12 +52,12 @@ class Entrada:
 
 class ExplorarScreen(Screen[None]):
     BINDINGS = [
-        Binding("backspace", "subir", "Subir"),
-        Binding("delete", "papelera", "Papelera"),
-        Binding("shift+delete", "borrar", "Borrar"),
-        Binding("f5,r", "actualizar", "Actualizar"),
-        Binding("o", "abrir", "Abrir en el gestor de archivos"),
-        Binding("escape", "cerrar", "Inicio"),
+        Binding("backspace", "subir", tr("Subir")),
+        Binding("delete", "papelera", tr("Papelera")),
+        Binding("shift+delete", "borrar", tr("Borrar")),
+        Binding("f5,r", "actualizar", tr("Actualizar")),
+        Binding("o", "abrir", tr("Abrir en el gestor de archivos")),
+        Binding("escape", "cerrar", tr("Inicio")),
     ]
 
     def __init__(self, res: Resultado, inicio: str, anterior: Foto | None = None):
@@ -95,7 +96,7 @@ class ExplorarScreen(Screen[None]):
         try:
             it = list(os.scandir(carpeta))
         except OSError as e:
-            self.notify(f"No se puede leer {carpeta}: {e.strerror}", severity="warning")
+            self.notify(tr("No se puede leer {carpeta}: {error}", carpeta=carpeta, error=e.strerror), severity="warning")
             return res
         for e in it:
             try:
@@ -110,8 +111,8 @@ class ExplorarScreen(Screen[None]):
     # ── armado ──
 
     def compose(self) -> ComposeResult:
-        yield cabecera("📂 Explorar", "clic/enter entrar · ⌫ subir · Supr papelera · Shift+Supr borrar · "
-                                     "o abrir carpeta · F5 medir")
+        yield cabecera(tr("📂 Explorar"), tr("clic/enter entrar · ⌫ subir · Supr papelera · Shift+Supr borrar · "
+                                       "o abrir carpeta · F5 medir"))
         with Horizontal(classes="migas"):
             yield Static(id="ruta", classes="ruta")
             yield Static(id="resumen", classes="resumen")
@@ -120,14 +121,14 @@ class ExplorarScreen(Screen[None]):
             yield Static(id="info", classes="info")
         # Tres grupos: navegar · borrar · app
         with Horizontal(classes="botones barra-explorar"):
-            yield Button("← Subir", id="subir")
-            yield Button("📂 Abrir", id="abrir")
+            yield Button(tr("← Subir"), id="subir")
+            yield Button(tr("📂 Abrir"), id="abrir")
             yield Static(classes="separador")
-            yield Button("🗑 Papelera", id="papelera", variant="warning")
-            yield Button("🔥 Borrar", id="borrar", variant="error")
+            yield Button(tr("🗑 Papelera"), id="papelera", variant="warning")
+            yield Button(tr("🔥 Borrar"), id="borrar", variant="error")
             yield Static(classes="espacio")
-            yield Button("🔄 Actualizar", id="actualizar")
-            yield Button("🏠 Inicio", id="cerrar", variant="primary")
+            yield Button(tr("🔄 Actualizar"), id="actualizar")
+            yield Button(tr("🏠 Inicio"), id="cerrar", variant="primary")
 
     def on_mount(self) -> None:
         self._ir(self.actual)
@@ -143,7 +144,7 @@ class ExplorarScreen(Screen[None]):
             idx = next((i for i, e in enumerate(self.entradas) if e.ruta == resaltar), 0)
             lista.highlighted = idx
         else:
-            self.query_one("#info", Static).update(Text("(carpeta vacía)", style="dim"))
+            self.query_one("#info", Static).update(Text(tr("(carpeta vacía)"), style="dim"))
         self._migas()
 
     def _fila(self, e: Entrada, total: int) -> Text:
@@ -183,7 +184,7 @@ class ExplorarScreen(Screen[None]):
             return [(" " * 11, "")]
         d = (e.peso or 0) - antes
         if antes == 0:
-            return [(f"{'nueva':>9}  ", "magenta")]
+            return [(f"{tr('nueva'):>9}  ", "magenta")]
         return [(f"{('▲ ' if d > 0 else '▼ ') + humano(abs(d)):>9}  ", "yellow" if d > 0 else "green")]
 
     def _migas(self) -> None:
@@ -205,7 +206,7 @@ class ExplorarScreen(Screen[None]):
         peso = self.peso_carpeta(self.actual)
         cantidad = len(self.entradas)
         self.query_one("#resumen", Static).update(Text.assemble(
-            (f"{cantidad} elementos", "dim"), ("  ·  ", "dim"), (humano(peso) if peso else "", "bold")))
+            (tr("{n} elementos", n=cantidad), "dim"), ("  ·  ", "dim"), (humano(peso) if peso else "", "bold")))
 
     def action_miga(self, n: int) -> None:
         self._ir(self.rutas_migas[n], resaltar=self.actual)
@@ -218,7 +219,7 @@ class ExplorarScreen(Screen[None]):
 
     def _solo_lectura(self, ruta: str) -> str | None:
         if not (dentro_de(ruta, self.home) or any(dentro_de(ruta, z) for z in ZONAS_DISCOS)):
-            return "Fuera de tu home y de los discos de datos: acá solo se mira."
+            return tr("Fuera de tu home y de los discos de datos: acá solo se mira.")
         return self.verif.problema(ruta)
 
     def on_option_list_option_highlighted(self, ev: OptionList.OptionHighlighted) -> None:
@@ -226,25 +227,28 @@ class ExplorarScreen(Screen[None]):
         if not e:
             return
         filas = [Text.assemble(("📁 " if e.carpeta else "📄 ", ""), (e.ruta.replace(self.home, "~", 1), "bold"))]
-        detalle = Text.assemble(("Peso: ", "dim"), (humano(e.peso) if e.peso is not None else "sin medir", "bold"),
-                                ("   ·   Modificado: ", "dim"),
-                                (datetime.fromtimestamp(e.modificado).strftime("%d/%m/%Y %H:%M"), ""))
+        detalle = Text.assemble((tr("Peso: "), "dim"), (humano(e.peso) if e.peso is not None else tr("sin medir"), "bold"),
+                                (tr("   ·   Modificado: "), "dim"),
+                                (datetime.fromtimestamp(e.modificado).strftime(tr("%d/%m/%Y %H:%M")), ""))
         filas.append(detalle)
         antes = self._antes(e)
         if antes is not None and self.anterior:
             d = (e.peso or 0) - antes
-            cuando = f"En el análisis del {self.anterior.cuando}"
-            filas.append(Text(f"{cuando} no estaba (o pesaba menos de 1 MB)." if antes == 0 else
-                              f"{cuando} pesaba {humano(antes)}" + (f" ({'+' if d > 0 else '−'}{humano(abs(d))})"
-                                                                     if abs(d) >= MINIMO_FILA else ", igual que ahora."),
-                              style="yellow" if d >= MINIMO_FILA else "green" if d <= -MINIMO_FILA else "dim"))
+            fecha = self.anterior.cuando
+            if antes == 0:
+                texto = tr("En el análisis del {fecha} no estaba (o pesaba menos de 1 MB).", fecha=fecha)
+            else:
+                texto = tr("En el análisis del {fecha} pesaba {peso}", fecha=fecha, peso=humano(antes))
+                texto += (f" ({'+' if d > 0 else '−'}{humano(abs(d))})" if abs(d) >= MINIMO_FILA
+                          else tr(", igual que ahora."))
+            filas.append(Text(texto, style="yellow" if d >= MINIMO_FILA else "green" if d <= -MINIMO_FILA else "dim"))
         real = os.path.realpath(e.ruta)
         if h := self.marcas.get(real):
             filas.append(Text(f"{h.nivel.icono} {h.titulo}: {h.explicacion}", style=h.nivel.color))
         elif etiqueta := self.res.ctx.etiquetas.get(real):
             filas.append(Text(f"← {etiqueta}", style="magenta"))
         if motivo := self._solo_lectura(e.ruta):
-            filas.append(Text(f"🔒 No se puede borrar desde acá: {motivo}", style="dim"))
+            filas.append(Text(tr("🔒 No se puede borrar desde acá: {motivo}", motivo=motivo), style="dim"))
         texto = Text("\n").join(filas)
         self.query_one("#info", Static).update(texto)
 
@@ -281,7 +285,7 @@ class ExplorarScreen(Screen[None]):
         e = self._elegida()
         destino = e.ruta if e and e.carpeta else self.actual
         subprocess.Popen(["xdg-open", destino], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.notify(f"Abriendo {destino.replace(self.home, '~', 1)}")
+        self.notify(tr("Abriendo {carpeta}", carpeta=destino.replace(self.home, "~", 1)))
 
     def action_papelera(self) -> None:
         self._borrar(Modo.PAPELERA)
@@ -295,9 +299,9 @@ class ExplorarScreen(Screen[None]):
         if not e:
             return
         if motivo := self._solo_lectura(e.ruta):
-            self.notify(motivo, title="🔒 No se puede", severity="warning")
+            self.notify(motivo, title=tr("🔒 No se puede"), severity="warning")
             return
-        h = Hallazgo("Explorar", e.nombre, Nivel.REVISAR, e.peso, "", rutas=[Path(e.ruta)],
+        h = Hallazgo(tr("Explorar"), e.nombre, Nivel.REVISAR, e.peso, "", rutas=[Path(e.ruta)],
                      detalle=[], limpieza=Limpieza(modo))
         tarea = armar_tarea(h)
         if modo == Modo.BORRAR:
@@ -305,20 +309,22 @@ class ExplorarScreen(Screen[None]):
                 return
         else:
             r = await self.app.push_screen_wait(Dialogo(
-                "🗑 Mandar a la papelera",
+                tr("🗑 Mandar a la papelera"),
                 Text.assemble(e.ruta.replace(self.home, "~", 1), (f"  ({humano(e.peso)})", "bold"),
-                              ("\n\nSe puede recuperar desde la papelera de tu gestor de archivos. El espacio se libera al vaciarla.",
+                              (tr("\n\nSe puede recuperar desde la papelera de tu gestor de archivos. "
+                                  "El espacio se libera al vaciarla."),
                                "dim")),
-                [("si", "🗑 A la papelera", "warning"), ("no", "Cancelar", "default")]))
+                [("si", tr("🗑 A la papelera"), "warning"), ("no", tr("Cancelar"), "default")]))
             if r != "si":
                 return
-        self.notify(f"{'Borrando' if modo == Modo.BORRAR else 'Mandando a la papelera'} {e.nombre}…")
+        self.notify(tr("Borrando {nombre}…", nombre=e.nombre) if modo == Modo.BORRAR
+                    else tr("Mandando a la papelera {nombre}…", nombre=e.nombre))
         res = await _en_hilo(ejecutar, tarea, self.verif, lambda s: None)
         if res.ok:
             self._descontar(e)
-            self.notify(f"✔ {e.nombre}: {res.mensaje}", title="Listo")
+            self.notify(f"✔ {e.nombre}: {res.mensaje}", title=tr("Listo"))
         else:
-            self.notify("\n".join(res.errores[:3]) or res.mensaje, title="No se pudo", severity="error")
+            self.notify("\n".join(res.errores[:3]) or res.mensaje, title=tr("No se pudo"), severity="error")
         idx = self.query_one(OptionList).highlighted or 0
         self._ir(self.actual)
         if self.entradas:
@@ -344,7 +350,7 @@ class ExplorarScreen(Screen[None]):
         """Vuelve a medir la carpeta actual (y corrige el peso de las de arriba)."""
         actual = self.actual
         esc = next((x for x in self.res.ctx.escaneos if x.contiene(actual) and actual in x.total), None)
-        self.notify("Midiendo de nuevo…")
+        self.notify(tr("Midiendo de nuevo…"))
         nuevo = await _en_hilo(escanear, actual, tuple(esc.excluidas) if esc else ())
         if esc:
             delta = nuevo.peso - esc.total.get(actual, 0)
@@ -358,7 +364,7 @@ class ExplorarScreen(Screen[None]):
                     break
                 padre = os.path.dirname(padre)
         self._ir(actual, resaltar=(self._elegida().ruta if self._elegida() else None))
-        self.notify("Actualizado.", title="🔄")
+        self.notify(tr("Actualizado."), title="🔄")
 
     def action_cerrar(self) -> None:
         self.dismiss(None)
@@ -372,7 +378,7 @@ async def _en_hilo(funcion, *args):
 class ElegirRaiz(ModalScreen[str | None]):
     """¿Qué explorar? Un renglón por disco (con cuánto queda libre) o una ruta escrita a mano."""
 
-    BINDINGS = [Binding("escape", "cancelar", "Cancelar")]
+    BINDINGS = [Binding("escape", "cancelar", tr("Cancelar"))]
 
     def __init__(self, res: Resultado):
         super().__init__()
@@ -381,9 +387,9 @@ class ElegirRaiz(ModalScreen[str | None]):
 
     def _fila(self, raiz: str, peso: int, angosta: bool) -> Text:
         if raiz == self.home:
-            icono, nombre, donde = "🏠", "Tu home", "~"
+            icono, nombre, donde = "🏠", tr("Tu home"), "~"
         elif raiz == "/":
-            icono, nombre, donde = "💻", "Sistema", "/  (sin tu home)"
+            icono, nombre, donde = "💻", tr("Sistema"), tr("/  (sin tu home)")
         else:
             icono, nombre, donde = "💽", os.path.basename(raiz) or raiz, raiz
         fila = Text.assemble(f" {icono}  ", (f"{nombre:<9}", "bold"), (f"{humano(peso):>10}  ", "bold cyan"))
@@ -394,24 +400,25 @@ class ElegirRaiz(ModalScreen[str | None]):
             f = u.used / u.total
             color = "red" if f >= 0.9 else "yellow" if f >= 0.75 else "green"
             llenos = round(f * 10)
-            fila.append_text(Text.assemble(("" if angosta else "  disco ", "dim"),
+            fila.append_text(Text.assemble(("" if angosta else tr("  disco "), "dim"),
                                            ("━" * llenos, color), ("━" * (10 - llenos), "grey23"),
-                                           (f" {f:.0%}", color), (f" · {humano(u.free)} libres", "dim")))
+                                           (f" {f:.0%}", color), (tr(" · {libre} libres", libre=humano(u.free)), "dim")))
         except OSError:
             pass
         return fila
 
     def compose(self) -> ComposeResult:
         analisis = leer().get("analisis")
-        cuando = hace(analisis["fecha"]) if analisis else "del último análisis"
+        cuando = hace(analisis["fecha"]) if analisis else tr("del último análisis")
         with Vertical(classes="dialogo elegir-raiz"):
-            yield Static(Text("📂 ¿Qué querés explorar?", style="bold"), classes="dialogo-titulo")
+            yield Static(Text(tr("📂 ¿Qué querés explorar?"), style="bold"), classes="dialogo-titulo")
             angosta = self.app.size.width < 100
             yield OptionList(*[Option(self._fila(e.raiz, e.peso, angosta), id=str(i))
                                for i, e in enumerate(self.raices)], id="raices")
-            yield Static(Text(f"Pesos medidos {cuando} · adentro, 🔄 Actualizar vuelve a medir", style="dim"))
-            yield Input(placeholder="…o escribí una carpeta (ej. ~/Descargas) y enter", id="ruta-manual")
-            yield barra_botones([ESPACIO, ("cancelar", "Cancelar", "default")])
+            yield Static(Text(tr("Pesos medidos {cuando} · adentro, 🔄 Actualizar vuelve a medir", cuando=cuando),
+                              style="dim"))
+            yield Input(placeholder=tr("…o escribí una carpeta (ej. ~/Descargas) y enter"), id="ruta-manual")
+            yield barra_botones([ESPACIO, ("cancelar", tr("Cancelar"), "default")])
 
     def on_mount(self) -> None:
         self.query_one("#raices", OptionList).focus()
@@ -424,7 +431,7 @@ class ElegirRaiz(ModalScreen[str | None]):
         if not ev.value.strip():
             return
         if not os.path.isdir(ruta):
-            self.notify(f"No existe la carpeta {ruta}", severity="error")
+            self.notify(tr("No existe la carpeta {ruta}", ruta=ruta), severity="error")
             return
         self.dismiss(ruta)
 

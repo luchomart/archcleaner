@@ -9,6 +9,7 @@ from pathlib import Path
 from ..contexto import Contexto
 from ..modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from ..util import ejecutar, humano, parsear_tamano
+from ..i18n import tr
 
 CACHE = Path("/var/cache/pacman/pkg")
 
@@ -41,23 +42,23 @@ def _cache(ctx: Contexto) -> list[Hallazgo]:
     total, _ = ctx.medir(CACHE)
     res = []
     if ejecutar(["which", "paccache"]) is None:
-        ctx.avisos.append("No está instalado pacman-contrib (paccache): no se puede analizar la caché de pacman.")
+        ctx.avisos.append(tr("No está instalado pacman-contrib (paccache): no se puede analizar la caché de pacman."))
         return res
 
     n, b = _dry_run_paccache(["-k2"])
     if n:
         res.append(Hallazgo(
-            "Pacman", "Versiones viejas en la caché de paquetes", Nivel.SEGURO, b,
-            f"Pacman guarda cada versión que descargó (la caché pesa {humano(total)} en total). "
-            f"Se conservan las 2 últimas de cada paquete por si una actualización sale mal y "
-            f"necesitás volver atrás; se borran {n} versiones más viejas.",
+            tr("Pacman"), tr("Versiones viejas en la caché de paquetes"), Nivel.SEGURO, b,
+            tr("Pacman guarda cada versión que descargó (la caché pesa {total} en total). "
+              "Se conservan las 2 últimas de cada paquete por si una actualización sale mal y "
+              "necesitás volver atrás; se borran {n} versiones más viejas.", total=humano(total), n=n),
             rutas=[CACHE], limpieza=Limpieza(Modo.COMANDO, [["paccache", "-rk2"]], sudo=True),
         ))
     n, b = _dry_run_paccache(["-uk0"])
     if n:
         res.append(Hallazgo(
-            "Pacman", "Caché de paquetes que ya desinstalaste", Nivel.SEGURO, b,
-            f"{n} archivos de paquetes que ya no tenés instalados.",
+            tr("Pacman"), tr("Caché de paquetes que ya desinstalaste"), Nivel.SEGURO, b,
+            tr("{n} archivos de paquetes que ya no tenés instalados.", n=n),
             rutas=[CACHE], limpieza=Limpieza(Modo.COMANDO, [["paccache", "-ruk0"]], sudo=True),
         ))
     return res
@@ -78,12 +79,12 @@ def _huerfanos() -> Hallazgo | None:
             nombre = None
     detalle = items_ordenados(detalle)
     return Hallazgo(
-        "Pacman", "Paquetes huérfanos", Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
-        "Se instalaron como dependencia de algo que ya desinstalaste y nadie más los usa. "
-        "Ojo: si alguno lo usás vos directamente (por ejemplo un compilador), quedátelo.",
+        tr("Pacman"), tr("Paquetes huérfanos"), Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
+        tr("Se instalaron como dependencia de algo que ya desinstalaste y nadie más los usa. "
+          "Ojo: si alguno lo usás vos directamente (por ejemplo un compilador), quedátelo."),
         detalle=detalle,
         limpieza=Limpieza(Modo.COMANDO, [["pacman", "-Rns", *nombres]], sudo=True,
-                          nota="pacman te va a mostrar la lista y pedir confirmación."),
+                          nota=tr("pacman te va a mostrar la lista y pedir confirmación.")),
     )
 
 
@@ -108,13 +109,13 @@ def _debug() -> Hallazgo | None:
         return None
     detalle = _info_paquetes(nombres)
     return Hallazgo(
-        "AUR", "Paquetes de depuración (-debug)", Nivel.SEGURO, sum(i.peso or 0 for i in detalle),
-        "Símbolos para depurar programas compilados del AUR. Solo sirven si vas a investigar un cuelgue "
-        "con gdb. Se crean porque /etc/makepkg.conf tiene la opción «debug»: para que no se generen más, "
-        "creá ~/.config/pacman/makepkg.conf con la línea  OPTIONS+=(!debug)",
+        tr("AUR"), tr("Paquetes de depuración (-debug)"), Nivel.SEGURO, sum(i.peso or 0 for i in detalle),
+        tr("Símbolos para depurar programas compilados del AUR. Solo sirven si vas a investigar un cuelgue "
+          "con gdb. Se crean porque /etc/makepkg.conf tiene la opción «debug»: para que no se generen más, "
+          "creá ~/.config/pacman/makepkg.conf con la línea  OPTIONS+=(!debug)"),
         detalle=detalle,
         limpieza=Limpieza(Modo.COMANDO, [["pacman", "-Rns", *nombres]], sudo=True,
-                          nota="pacman te va a mostrar la lista y pedir confirmación."),
+                          nota=tr("pacman te va a mostrar la lista y pedir confirmación.")),
     )
 
 
@@ -131,10 +132,10 @@ def _pacsave() -> Hallazgo | None:
     if not encontrados:
         return None
     return Hallazgo(
-        "Pacman", "Configs .pacnew / .pacsave pendientes", Nivel.REVISAR,
+        tr("Pacman"), tr("Configs .pacnew / .pacsave pendientes"), Nivel.REVISAR,
         sum(i.peso or 0 for i in encontrados),
-        ".pacsave = config de un programa desinstalado que pacman guardó por las dudas (resto). "
-        ".pacnew = config nueva que trajo una actualización y no se aplicó. No ocupan casi nada, "
-        "pero conviene revisarlas (con `pacdiff`, de pacman-contrib).",
+        tr(".pacsave = config de un programa desinstalado que pacman guardó por las dudas (resto). "
+          ".pacnew = config nueva que trajo una actualización y no se aplicó. No ocupan casi nada, "
+          "pero conviene revisarlas (con `pacdiff`, de pacman-contrib)."),
         detalle=encontrados, suma=False,
     )

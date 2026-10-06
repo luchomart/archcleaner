@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .detectores.steam import _bibliotecas, _manifiestos, _raiz_steam
 from .util import dentro_de, ejecutar, leer_vdf, parsear_tamano
+from .i18n import tr
 
 ORIGENES = {
     "repo": ("repos", "cyan"),
@@ -62,10 +63,10 @@ class Programa:
 
 # (clave, texto del botón, función de orden)
 ORDENES = {
-    "tamano": ("Tamaño", lambda p: -(p.peso or 0)),
-    "uso": ("Menos usados", lambda p: (p.visto_en_uso is None, p.visto_en_uso or 0, -(p.peso or 0))),
-    "nombre": ("Nombre", lambda p: p.nombre.lower()),
-    "reciente": ("Recién instalados", lambda p: -(p.instalado or 0)),
+    "tamano": (tr("Tamaño"), lambda p: -(p.peso or 0)),
+    "uso": (tr("Menos usados"), lambda p: (p.visto_en_uso is None, p.visto_en_uso or 0, -(p.peso or 0))),
+    "nombre": (tr("Nombre"), lambda p: p.nombre.lower()),
+    "reciente": (tr("Recién instalados"), lambda p: -(p.instalado or 0)),
 }
 
 
@@ -231,7 +232,7 @@ def _steam(home: Path) -> list[Programa]:
                 continue
             donde = str(lib).replace(str(home), "~")
             res.append(Programa(appid, nombre, "steam", int(d.get("sizeondisk") or 0),
-                                f"juego · appid {appid} · {donde}", "",
+                                tr("juego · appid {appid} · {donde}", appid=appid, donde=donde), "",
                                 {"biblioteca": str(lib), "installdir": d.get("installdir", "")},
                                 ultimo_uso=jugado.get(appid), instalado=_numero(d.get("lastupdated")),
                                 uso_conocido=True))
@@ -264,11 +265,11 @@ def hace(t: float | None, ahora: float | None = None) -> str:
         return ""
     dias = int(((ahora or time.time()) - t) // 86400)
     if dias <= 0:
-        return "hoy"
+        return tr("hoy")
     if dias == 1:
-        return "ayer"
+        return tr("ayer")
     if dias < 60:
-        return f"hace {dias} d"
+        return tr("hace {n} d", n=dias)
     if dias < 730:
-        return f"hace {dias // 30} meses"
-    return f"hace {dias // 365} años"
+        return tr("hace {n} meses", n=dias // 30)
+    return tr("hace {n} años", n=dias // 365)

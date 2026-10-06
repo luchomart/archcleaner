@@ -18,6 +18,7 @@ from textual.widgets.option_list import Option
 from ..modelo import Hallazgo, Nivel
 from ..util import acortar, humano
 from .comunes import ESPACIO, barra_botones
+from ..i18n import tr
 
 # Selección: número de hallazgo -> None (el hallazgo entero) o lista de índices del detalle.
 Seleccion = dict[int, list[int] | None]
@@ -33,15 +34,15 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
     """Devuelve la selección, None si se cancela, o "actualizar" para volver a buscar."""
 
     BINDINGS = [
-        Binding("space", "tildar", "Tildar"),
-        Binding("s", "solo_seguros", "Solo 🟢"),
-        Binding("n", "ninguno", "Ninguno"),
-        Binding("enter", "continuar", "Continuar", priority=True),
-        Binding("escape", "salir", "Cancelar"),
-        Binding("r,f5", "actualizar", "Actualizar"),
+        Binding("space", "tildar", tr("Tildar")),
+        Binding("s", "solo_seguros", tr("Solo 🟢")),
+        Binding("n", "ninguno", tr("Ninguno")),
+        Binding("enter", "continuar", tr("Continuar"), priority=True),
+        Binding("escape", "salir", tr("Cancelar")),
+        Binding("r,f5", "actualizar", tr("Actualizar")),
     ]
 
-    def __init__(self, hallazgos: list[Hallazgo], titulo: str = "🧹 Elegí qué limpiar",
+    def __init__(self, hallazgos: list[Hallazgo], titulo: str = tr("🧹 Elegí qué limpiar"),
                  secciones: dict[Nivel, str] | None = None, previa: Seleccion | None = None):
         super().__init__()
         self.titulo = titulo
@@ -92,9 +93,9 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         with Vertical():
             yield OptionList(id="lista", classes="lista")
             yield Static(id="info", classes="info")
-        yield barra_botones([("continuar", "Continuar ▸", "success"), ("seguros", "Solo 🟢", "default"),
-                             ("ninguno", "Ninguno", "default"), ESPACIO,
-                             ("actualizar", "🔄 Actualizar", "default"), ("cancelar", "Cancelar", "default")])
+        yield barra_botones([("continuar", tr("Continuar ▸"), "success"), ("seguros", tr("Solo 🟢"), "default"),
+                             ("ninguno", tr("Ninguno"), "default"), ESPACIO,
+                             ("actualizar", tr("🔄 Actualizar"), "default"), ("cancelar", tr("Cancelar"), "default")])
 
     def on_mount(self) -> None:
         self._redibujar()
@@ -151,10 +152,10 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         sel = self.seleccion()
         self.query_one("#cabecera", Static).update(Text.assemble(
             (self.titulo, "bold cyan"),
-            ("   ·   ", "dim"), (f"{len(sel)} grupos", "bold"),
-            ("   ·   ", "dim"), ("seleccionado: ", "dim"), (humano(self.total()), "bold green"),
-            ("\nNada se borra todavía: después vas a ver el plan y confirmar.   ", "dim"),
-            ("clic o espacio: ", "bold"), ("tildar/destildar", "dim"),
+            ("   ·   ", "dim"), (tr("{n} grupos", n=len(sel)), "bold"),
+            ("   ·   ", "dim"), (tr("seleccionado: "), "dim"), (humano(self.total()), "bold green"),
+            (tr("\nNada se borra todavía: después vas a ver el plan y confirmar.   "), "dim"),
+            (tr("clic o espacio: "), "bold"), (tr("tildar/destildar"), "dim"),
         ))
 
     def on_option_list_option_highlighted(self, ev: OptionList.OptionHighlighted) -> None:
@@ -170,7 +171,7 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         texto.append("\n▸ ", style=h.nivel.color)
         texto.append(lim.describir())
         if lim.cerrar:
-            texto.append(f"   (con {', '.join(lim.cerrar)} cerrado)", style="yellow")
+            texto.append(tr("   (con {programas} cerrado)", programas=", ".join(lim.cerrar)), style="yellow")
         if lim.nota:
             texto.append(f"\n⚠ {lim.nota}", style="yellow")
         info.update(texto)

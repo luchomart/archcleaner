@@ -15,6 +15,7 @@ import subprocess
 from pathlib import Path
 
 from .util import dentro_de, ejecutar
+from .i18n import tr
 
 # Carpetas del sistema donde sí se puede borrar algo adentro.
 ZONAS_SISTEMA = (
@@ -32,6 +33,8 @@ PROHIBIDAS = {
     "/opt", "/proc", "/root", "/run", "/run/media", "/sbin", "/srv", "/sys", "/tmp", "/usr", "/var",
     "/timeshift",
 }
+
+YA_NO_EXISTE = tr("ya no existe")  # se compara: por eso es una constante
 
 VACIABLES = (".cache", ".local/share/Trash")  # carpetas protegidas cuyo CONTENIDO sí se puede vaciar
 
@@ -68,21 +71,22 @@ class Verificador:
         s = os.path.normpath(os.path.abspath(str(ruta)))
         p = Path(s)
         if not p.exists() and not p.is_symlink():
-            return "ya no existe"
+            return YA_NO_EXISTE
         # Si alguna carpeta del camino es un enlace (ej. ~/enlace -> /etc), lo que se borra de verdad
         # está en otro lado: se verifica también la ruta real (el último elemento no se resuelve:
         # si es un enlace, se borra el enlace).
         real = os.path.join(os.path.realpath(os.path.dirname(s)), os.path.basename(s))
         if real != s and (motivo := self.problema(real, vaciar)):
-            return f"{motivo} (la ruta pasa por un enlace a {os.path.dirname(real)})"
+            return tr("{motivo} (la ruta pasa por un enlace a {destino})", motivo=motivo,
+                     destino=os.path.dirname(real))
         if s in PROHIBIDAS:
-            return "carpeta del sistema protegida"
+            return tr("carpeta del sistema protegida")
         if any(dentro_de(s, str(p)) for p in self.propias):
-            return "son datos o código del propio ArchCleaner"
+            return tr("son datos o código del propio ArchCleaner")
         if s in self.personales and not (vaciar and s in self.vaciables):
-            return "carpeta personal protegida (se puede borrar lo de adentro, no la carpeta)"
+            return tr("carpeta personal protegida (se puede borrar lo de adentro, no la carpeta)")
         if not p.is_symlink() and os.path.ismount(s):
-            return "es un punto de montaje (un disco entero)"
+            return tr("es un punto de montaje (un disco entero)")
 
         en_home = dentro_de(s, str(self.home))
         en_disco = any(dentro_de(s, z) for z in ZONAS_DISCOS) and s.count("/") >= 3
@@ -90,9 +94,9 @@ class Verificador:
         if not (en_home or en_disco or en_sistema) and os.path.dirname(s) in ZONAS_RESTOS:
             return self._problema_resto(p)
         if not (en_home or en_disco or en_sistema):
-            return "fuera de las zonas donde ArchCleaner puede borrar"
+            return tr("fuera de las zonas donde ArchCleaner puede borrar")
         if dentro_de(s, "/usr/lib/modules") and (p.name == self.kernel_actual or s.count("/") != 4):
-            return "módulos del kernel que estás usando"
+            return tr("módulos del kernel que estás usando")
         return None
 
     @staticmethod
@@ -101,11 +105,11 @@ class Verificador:
         from .ficha import CRITICOS_ETC  # import tardío: ficha importa cosas pesadas
 
         if p.name in CRITICOS_ETC or str(p) in PROHIBIDAS:
-            return "archivo vital del sistema"
+            return tr("archivo vital del sistema")
         if subprocess.run(["pacman", "-Qo", str(p)], capture_output=True).returncode == 0:
-            return "pertenece a un paquete instalado (lo maneja pacman)"
+            return tr("pertenece a un paquete instalado (lo maneja pacman)")
         if p.is_dir() and not p.is_symlink() and (ajeno := _archivo_de_paquete_adentro(p)):
-            return f"adentro hay un archivo de un paquete instalado ({ajeno})"
+            return tr("adentro hay un archivo de un paquete instalado ({archivo})", archivo=ajeno)
         return None
 
 
@@ -115,7 +119,7 @@ def _archivo_de_paquete_adentro(carpeta: Path, maximo: int = 5000) -> str | None
     for raiz, _dirs, nombres in os.walk(carpeta):
         archivos += [os.path.join(raiz, n) for n in nombres]
         if len(archivos) >= maximo:
-            return f"tiene más de {maximo} archivos: revisalo a mano"
+            return tr("tiene más de {n} archivos: revisalo a mano", n=maximo)
     for i in range(0, len(archivos), 500):
         sal = subprocess.run(["pacman", "-Qo", *archivos[i:i + 500]], capture_output=True, text=True,
                              env={**os.environ, "LANG": "C"})

@@ -13,6 +13,7 @@ from pathlib import Path
 from ..contexto import Contexto
 from ..modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from ..util import dentro_de, ejecutar
+from ..i18n import tr
 
 MINIMO = 10 * 1024**2
 MINIMO_RESTO = 20 * 1024**2
@@ -44,13 +45,13 @@ def _reclamada(ctx: Contexto, ruta: str) -> bool:
 # Cachés que se regeneran, pero a un costo alto (gigas que se vuelven a bajar, o cosas que dejan
 # de andar hasta reinstalarlas): van aparte y sin tildar.
 CACHES_CARAS = {
-    "huggingface": "modelos de IA descargados (pueden ser varios GB)",
-    "torch": "modelos de PyTorch descargados",
-    "whisper": "modelos de Whisper descargados",
-    "ms-playwright": "navegadores que instaló Playwright",
-    "pypoetry": "incluye los entornos virtuales de tus proyectos de Poetry",
-    "jetbrains": "índices de los IDE de JetBrains (reindexar tarda)",
-    "lm-studio": "modelos de LM Studio",
+    "huggingface": tr("modelos de IA descargados (pueden ser varios GB)"),
+    "torch": tr("modelos de PyTorch descargados"),
+    "whisper": tr("modelos de Whisper descargados"),
+    "ms-playwright": tr("navegadores que instaló Playwright"),
+    "pypoetry": tr("incluye los entornos virtuales de tus proyectos de Poetry"),
+    "jetbrains": tr("índices de los IDE de JetBrains (reindexar tarda)"),
+    "lm-studio": tr("modelos de LM Studio"),
 }
 
 
@@ -76,22 +77,22 @@ def _cache(ctx: Contexto) -> list[Hallazgo]:
     res = []
     if caras:
         res.append(Hallazgo(
-            "Home", "Cachés que cuesta regenerar (~/.cache)", Nivel.REVISAR, sum(i.peso or 0 for i in caras),
-            "Técnicamente son caché, pero volver a tenerlas cuesta: descargas grandes o cosas que dejan "
-            "de andar hasta reinstalarlas. Borralas solo si sabés que no las vas a usar.",
+            tr("Home"), tr("Cachés que cuesta regenerar (~/.cache)"), Nivel.REVISAR, sum(i.peso or 0 for i in caras),
+            tr("Técnicamente son caché, pero volver a tenerlas cuesta: descargas grandes o cosas que dejan "
+              "de andar hasta reinstalarlas. Borralas solo si sabés que no las vas a usar."),
             rutas=[i.ruta for i in caras if i.ruta], detalle=items_ordenados(caras),
             limpieza=Limpieza(Modo.PAPELERA, por_item=True),
         ))
     if not detalle:
         return res
     return res + [Hallazgo(
-        "Home", "Caché de programas (~/.cache)", Nivel.SEGURO, sum(i.peso or 0 for i in detalle),
-        "Archivos temporales que los programas regeneran solos (miniaturas, caché del navegador, etc.). "
-        "Conviene cerrar los programas antes de limpiar. Lo único que notás es que la primera vez "
-        "algunas cosas cargan un poco más lento.",
+        tr("Home"), tr("Caché de programas (~/.cache)"), Nivel.SEGURO, sum(i.peso or 0 for i in detalle),
+        tr("Archivos temporales que los programas regeneran solos (miniaturas, caché del navegador, etc.). "
+          "Conviene cerrar los programas antes de limpiar. Lo único que notás es que la primera vez "
+          "algunas cosas cargan un poco más lento."),
         rutas=rutas, detalle=items_ordenados(detalle),
         limpieza=Limpieza(Modo.BORRAR, por_item=True,
-                          nota="Cerrá el navegador y los programas cuya caché vayas a borrar."),
+                          nota=tr("Cerrá el navegador y los programas cuya caché vayas a borrar.")),
     )]
 
 
@@ -112,9 +113,9 @@ def _papeleras(ctx: Contexto) -> list[Hallazgo]:
     if not detalle:
         return []
     return [Hallazgo(
-        "Home", "Papelera", Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
-        "Cosas que ya mandaste a la papelera (también lo que mandó ArchCleaner). Vaciarla es "
-        "definitivo y son archivos tuyos, por eso no viene tildada: echale un vistazo antes.",
+        tr("Home"), tr("Papelera"), Nivel.REVISAR, sum(i.peso or 0 for i in detalle),
+        tr("Cosas que ya mandaste a la papelera (también lo que mandó ArchCleaner). Vaciarla es "
+          "definitivo y son archivos tuyos, por eso no viene tildada: echale un vistazo antes."),
         rutas=rutas, detalle=detalle, limpieza=Limpieza(Modo.VACIAR, por_item=True),
     )]
 
@@ -139,9 +140,9 @@ def _descargas_viejas(ctx: Contexto) -> list[Hallazgo]:
     if not detalle:
         return []
     return [Hallazgo(
-        "Home", f"Descargas de hace más de {DIAS_DESCARGA_VIEJA} días", Nivel.REVISAR,
+        tr("Home"), tr("Descargas de hace más de {n} días", n=DIAS_DESCARGA_VIEJA), Nivel.REVISAR,
         sum(i.peso or 0 for i in detalle),
-        "Instaladores, ISOs, comprimidos... cosas que bajaste hace rato y probablemente ya usaste.",
+        tr("Instaladores, ISOs, comprimidos... cosas que bajaste hace rato y probablemente ya usaste."),
         rutas=rutas, detalle=items_ordenados(detalle),
         limpieza=Limpieza(Modo.PAPELERA, por_item=True),
     )]
@@ -206,11 +207,11 @@ def _restos(ctx: Contexto) -> list[Hallazgo]:
     if not detalle:
         return []
     return [Hallazgo(
-        "Home", "Posibles restos de programas que ya no están", Nivel.REVISAR,
+        tr("Home"), tr("Posibles restos de programas que ya no están"), Nivel.REVISAR,
         sum(i.peso or 0 for i in detalle),
-        "Carpetas de configuración/datos cuyo nombre no coincide con nada instalado. Es una "
-        "suposición por nombre: puede ser de un AppImage, un programa portable o algo que usás. "
-        "Revisá una por una.",
+        tr("Carpetas de configuración/datos cuyo nombre no coincide con nada instalado. Es una "
+          "suposición por nombre: puede ser de un AppImage, un programa portable o algo que usás. "
+          "Revisá una por una."),
         rutas=rutas, detalle=items_ordenados(detalle),
         limpieza=Limpieza(Modo.PAPELERA, por_item=True),
     )]

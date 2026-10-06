@@ -1,9 +1,11 @@
-"""Genera las capturas del README (docs/capturas/*.svg) con una PC de demostración.
+"""Genera las capturas del README con una PC de demostración: docs/capturas/*.svg (español) y
+docs/capturas/en/*.svg (inglés).
 
 Nada sale de tu PC: el home, los discos, los programas y el historial son inventados, y no se
 borra ni se instala nada (no se aprieta ningún botón que ejecute).
 
-    python docs/generar_capturas.py
+    python docs/generar_capturas.py            # las dos
+    python docs/generar_capturas.py --lang en  # solo una
 """
 
 from __future__ import annotations
@@ -21,7 +23,16 @@ from unittest import mock
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
+if "--lang" not in sys.argv:  # cada idioma en su propio proceso: los textos se arman al importar
+    import subprocess
+    for idioma in ("es", "en"):
+        subprocess.run([sys.executable, __file__, "--lang", idioma], check=True)
+    sys.exit(0)
+IDIOMA = sys.argv[sys.argv.index("--lang") + 1]
+os.environ["ARCHCLEANER_LANG"] = IDIOMA
+
 from archcleaner import estado, historial  # noqa: E402
+from archcleaner.i18n import tr  # noqa: E402
 from archcleaner.analisis import Resultado  # noqa: E402
 from archcleaner.contexto import Contexto  # noqa: E402
 from archcleaner.escaner import ResultadoEscaneo  # noqa: E402
@@ -31,11 +42,16 @@ from archcleaner.tui import app as appmod  # noqa: E402
 from archcleaner.tui import menu  # noqa: E402
 from archcleaner.tui.app import ArchCleanerApp  # noqa: E402
 
-SALIDA = RAIZ / "docs/capturas"
+SALIDA = RAIZ / "docs/capturas" / ("" if IDIOMA == "es" else IDIOMA)
 TAMANO = (112, 36)
 GB, MB = 1024**3, 1024**2
 DIA = 86400
 Uso = namedtuple("Uso", "total used free")
+# nombres de las carpetas personales de la PC de demostración, en el idioma de la captura
+C = ({"Juegos": "Juegos", "Descargas": "Descargas", "Proyectos": "Proyectos", "Documentos": "Documentos",
+      "Imágenes": "Imágenes", "Aplicaciones": "Aplicaciones"} if IDIOMA == "es" else
+     {"Juegos": "Games", "Descargas": "Downloads", "Proyectos": "Projects", "Documentos": "Documents",
+      "Imágenes": "Pictures", "Aplicaciones": "Applications"})
 
 
 def disco(_ruta) -> Uso:
@@ -49,10 +65,11 @@ class Demo:
         h = self.home
         for rel in (".cache/mesa_shader_cache", ".cache/google-chrome", ".cache/thumbnails", ".cache/pip",
                     ".local/share/Steam/steamapps/common", ".local/share/Steam/steamapps/workshop",
-                    ".config", "Descargas/isos", "Juegos/Hollow Knight", "Videos/2025", "Proyectos/web/node_modules",
-                    "Documentos", "Imágenes"):
+                    ".config", f"{C['Descargas']}/isos", f"{C['Juegos']}/Hollow Knight", "Videos/2025",
+                    f"{C['Proyectos']}/web/node_modules",
+                    C["Documentos"], C["Imágenes"]):
             (h / rel).mkdir(parents=True, exist_ok=True)
-        (h / "Descargas/ubuntu-24.04-desktop-amd64.iso").write_bytes(b"x" * 4096)
+        (h / f"{C['Descargas']}/ubuntu-24.04-desktop-amd64.iso").write_bytes(b"x" * 4096)
         (h / "Videos/2025/vacaciones.mp4").write_bytes(b"x" * 4096)
         self.estado = self.tmp / "estado"
 
@@ -61,77 +78,97 @@ class Demo:
         total = {
             h: 182 * GB, f"{h}/.local": 96 * GB, f"{h}/.local/share": 95 * GB, f"{h}/.local/share/Steam": 88 * GB,
             f"{h}/.local/share/Steam/steamapps": 87 * GB, f"{h}/.local/share/Steam/steamapps/common": 79 * GB,
-            f"{h}/.local/share/Steam/steamapps/workshop": 6 * GB, f"{h}/Juegos": 38 * GB,
-            f"{h}/Juegos/Hollow Knight": 38 * GB, f"{h}/Videos": 21 * GB, f"{h}/Videos/2025": 21 * GB,
-            f"{h}/Descargas": 9 * GB, f"{h}/Descargas/isos": 3 * GB, f"{h}/.cache": 4 * GB,
+            f"{h}/.local/share/Steam/steamapps/workshop": 6 * GB, f"{h}/{C['Juegos']}": 38 * GB,
+            f"{h}/{C['Juegos']}/Hollow Knight": 38 * GB, f"{h}/Videos": 21 * GB, f"{h}/Videos/2025": 21 * GB,
+            f"{h}/{C['Descargas']}": 9 * GB, f"{h}/{C['Descargas']}/isos": 3 * GB, f"{h}/.cache": 4 * GB,
             f"{h}/.cache/mesa_shader_cache": 1600 * MB, f"{h}/.cache/google-chrome": 1200 * MB,
-            f"{h}/.cache/thumbnails": 700 * MB, f"{h}/.cache/pip": 500 * MB, f"{h}/Proyectos": 2 * GB,
-            f"{h}/Proyectos/web": 2 * GB, f"{h}/Proyectos/web/node_modules": 1800 * MB, f"{h}/.config": 3 * GB,
-            f"{h}/Documentos": 2 * GB, f"{h}/Imágenes": 6 * GB,
+            f"{h}/.cache/thumbnails": 700 * MB, f"{h}/.cache/pip": 500 * MB, f"{h}/{C['Proyectos']}": 2 * GB,
+            f"{h}/{C['Proyectos']}/web": 2 * GB, f"{h}/{C['Proyectos']}/web/node_modules": 1800 * MB, f"{h}/.config": 3 * GB,
+            f"{h}/{C['Documentos']}": 2 * GB, f"{h}/{C['Imágenes']}": 6 * GB,
         }
         return ResultadoEscaneo(raiz=h, total=total)
 
     def resultado(self) -> Resultado:
+        """Hallazgos como los de los detectores reales (con sus mismos textos, así se traducen)."""
         ctx = Contexto(home=self.home)
         ctx.escaneos = [self.escaneo()]
         h = self.home
+        steam = "~/.local/share/Steam"
         H = [
-            Hallazgo("Pacman", "Caché de paquetes de pacman", Nivel.SEGURO, 3400 * MB,
-                     "Instaladores de versiones viejas. Se dejan las 2 últimas de cada paquete (por si "
-                     "tenés que volver atrás) y se borra el resto con paccache.",
+            Hallazgo(tr("Pacman"), tr("Versiones viejas en la caché de paquetes"), Nivel.SEGURO, 3400 * MB,
+                     tr("Pacman guarda cada versión que descargó (la caché pesa {total} en total). "
+                        "Se conservan las 2 últimas de cada paquete por si una actualización sale mal y "
+                        "necesitás volver atrás; se borran {n} versiones más viejas.", total="5.1 GB", n=143),
                      rutas=[Path("/var/cache/pacman/pkg")],
                      limpieza=Limpieza(Modo.COMANDO, [["paccache", "-rk2"]], sudo=True)),
-            Hallazgo("Home", "Caché de programas (~/.cache)", Nivel.SEGURO, 4000 * MB,
-                     "Archivos temporales que los programas regeneran solos.",
+            Hallazgo(tr("Home"), tr("Caché de programas (~/.cache)"), Nivel.SEGURO, 4000 * MB,
+                     tr("Archivos temporales que los programas regeneran solos (miniaturas, caché del navegador, "
+                        "etc.). Conviene cerrar los programas antes de limpiar. Lo único que notás es que la "
+                        "primera vez algunas cosas cargan un poco más lento."),
                      rutas=[h / ".cache"], detalle=[
                          Item("mesa_shader_cache", 1600 * MB, h / ".cache/mesa_shader_cache"),
                          Item("google-chrome", 1200 * MB, h / ".cache/google-chrome"),
                          Item("thumbnails", 700 * MB, h / ".cache/thumbnails"),
                          Item("pip", 500 * MB, h / ".cache/pip")],
                      limpieza=Limpieza(Modo.BORRAR, por_item=True)),
-            Hallazgo("Sistema", "Logs viejos del sistema (journald)", Nivel.SEGURO, 1100 * MB,
-                     "Se recortan a los 200 MB más recientes.", rutas=[Path("/var/log/journal")],
+            Hallazgo(tr("Sistema"), tr("Logs viejos del sistema (journald)"), Nivel.SEGURO, 1100 * MB,
+                     tr("Los registros del sistema ocupan {usado}. Se recortan a los {objetivo} más recientes: "
+                        "alcanza de sobra para diagnosticar problemas.", usado="1.3 GB", objetivo="200.0 MB"),
+                     rutas=[Path("/var/log/journal")],
                      limpieza=Limpieza(Modo.COMANDO, [["journalctl", "--vacuum-size=200M"]], sudo=True)),
-            Hallazgo("Pacman", "Paquetes huérfanos", Nivel.SEGURO, 640 * MB,
-                     "Dependencias que quedaron instaladas y ya nadie usa.",
+            Hallazgo(tr("Pacman"), tr("Paquetes huérfanos"), Nivel.SEGURO, 640 * MB,
+                     tr("Se instalaron como dependencia de algo que ya desinstalaste y nadie más los usa. "
+                        "Ojo: si alguno lo usás vos directamente (por ejemplo un compilador), quedátelo."),
                      detalle=[Item("python-sphinx", 210 * MB), Item("rust", 400 * MB), Item("go-tools", 30 * MB)],
                      limpieza=Limpieza(Modo.COMANDO, [["pacman", "-Rns", "python-sphinx", "rust", "go-tools"]],
                                        sudo=True)),
-            Hallazgo("Archivos", "Juegos instalados por fuera de Steam", Nivel.REVISAR, 38 * GB,
-                     "No es basura: son juegos instalados a mano. Si ya no jugás alguno, borrar su carpeta "
-                     "libera todo eso.", rutas=[h / "Juegos/Hollow Knight"],
-                     detalle=[Item("Hollow Knight  (~/Juegos)", 38 * GB, h / "Juegos/Hollow Knight")],
+            Hallazgo(tr("Archivos"), tr("Juegos instalados por fuera de Steam"), Nivel.REVISAR, 38 * GB,
+                     tr("No es basura: son juegos instalados a mano (Hydra, repacks, GOG...). Se muestran porque "
+                        "pesan mucho: si ya no jugás alguno, borrar su carpeta libera todo eso. Ojo: con "
+                        "Proton/Wine las partidas suelen guardarse en el prefijo, no acá, así que borrar el juego "
+                        "no las borra."), rutas=[h / f"{C['Juegos']}/Hollow Knight"],
+                     detalle=[Item(f"Hollow Knight  (~/{C['Juegos']})", 38 * GB, h / f"{C['Juegos']}/Hollow Knight")],
                      limpieza=Limpieza(Modo.PAPELERA, por_item=True)),
-            Hallazgo("Sistema", "Snapshots de Timeshift de más de 30 días", Nivel.REVISAR, 12 * GB,
-                     "Las snapshots manuales no se borran solas. La más reciente se conserva siempre.",
-                     detalle=[Item("2026-06-02_10-00-01  (manual, hace 126 días)", 7 * GB, comando=["true"]),
-                              Item("2026-08-14_18-30-00  (manual, hace 53 días)", 5 * GB, comando=["true"])],
+            Hallazgo(tr("Sistema"), tr("Snapshots de Timeshift de más de {n} días", n=30), Nivel.REVISAR, 12 * GB,
+                     tr("Las snapshots manuales Timeshift no las borra nunca solo, así que se acumulan. "
+                        "El peso es lo que se libera de verdad: solo los archivos que no comparte con otras "
+                        "snapshots. La más reciente ({nombre}) se conserva siempre.", nombre="2026-10-01_09-00-00"),
+                     detalle=[Item(tr("{nombre}  ({tipo}, hace {dias} días{nota})", nombre="2026-06-02_10-00-01",
+                                      tipo=tr("manual"), dias=126, nota=""), 7 * GB, comando=["true"]),
+                              Item(tr("{nombre}  ({tipo}, hace {dias} días{nota})", nombre="2026-08-14_18-30-00",
+                                      tipo=tr("manual"), dias=53, nota=""), 5 * GB, comando=["true"])],
                      limpieza=Limpieza(Modo.COMANDO, sudo=True, por_item=True)),
-            Hallazgo("Steam", "Workshop de Wallpaper Engine", Nivel.REVISAR, 6 * GB,
-                     "Contenido de Workshop al que estás suscripto. Si lo borrás a mano, Steam lo vuelve a "
-                     "bajar: desuscribite en Steam de lo que no uses.",
+            Hallazgo(tr("Steam"), tr("Workshop de {juego}", juego="Wallpaper Engine"), Nivel.REVISAR, 6 * GB,
+                     tr("Contenido de Workshop al que estás suscripto ({n} ítems). Si lo borrás a mano, "
+                        "Steam lo vuelve a bajar: la forma correcta es desuscribirte en Steam de lo que no uses. "
+                        "Entre paréntesis va el ID: steamcommunity.com/sharedfiles/filedetails/?id=ID te lleva a "
+                        "su página.", n=3),
                      rutas=[h / ".local/share/Steam/steamapps/workshop"], suma=False, detalle=[
                          Item("Neon City Rain 4K  (2891734455)", 2100 * MB), Item("Lofi Room  (1981236612)", 900 * MB),
                          Item("Aurora Borealis  (2311898720)", 640 * MB)]),
-            Hallazgo("Home", "Descargas de hace más de 90 días", Nivel.REVISAR, 3 * GB,
-                     "Instaladores, ISOs, comprimidos... cosas que bajaste hace rato.",
-                     rutas=[h / "Descargas/ubuntu-24.04-desktop-amd64.iso"],
+            Hallazgo(tr("Home"), tr("Descargas de hace más de {n} días", n=90), Nivel.REVISAR, 3 * GB,
+                     tr("Instaladores, ISOs, comprimidos... cosas que bajaste hace rato y probablemente ya usaste."),
+                     rutas=[h / f"{C['Descargas']}/ubuntu-24.04-desktop-amd64.iso"],
                      detalle=[Item("ubuntu-24.04-desktop-amd64.iso", 3 * GB,
-                                   h / "Descargas/ubuntu-24.04-desktop-amd64.iso")],
+                                   h / f"{C['Descargas']}/ubuntu-24.04-desktop-amd64.iso")],
                      limpieza=Limpieza(Modo.PAPELERA, por_item=True)),
-            Hallazgo("Desarrollo", "Dependencias de proyectos (node_modules / venv)", Nivel.REVISAR, 1800 * MB,
-                     "Se regeneran con `npm install`.", rutas=[h / "Proyectos/web/node_modules"],
-                     detalle=[Item("~/Proyectos/web/node_modules  (sin tocar hace 140 días)", 1800 * MB,
-                                   h / "Proyectos/web/node_modules")],
+            Hallazgo(tr("Desarrollo"), tr("Dependencias de proyectos (node_modules / venv)"), Nivel.REVISAR,
+                     1800 * MB,
+                     tr("Librerías instaladas por proyecto. Se regeneran con `npm install` o `pip install -r ...`. "
+                        "Las de proyectos que no tocás hace rato son buenas candidatas."),
+                     rutas=[h / f"{C['Proyectos']}/web/node_modules"],
+                     detalle=[Item(f"~/{C['Proyectos']}/web/node_modules  (" + tr("sin tocar hace {n} días", n=140) + ")",
+                                   1800 * MB, h / f"{C['Proyectos']}/web/node_modules")],
                      limpieza=Limpieza(Modo.PAPELERA, por_item=True)),
-            Hallazgo("Steam", "Juegos instalados en ~/.local/share/Steam", Nivel.INFO, 79 * GB,
-                     "Lo que pesa cada juego. Si alguno no lo jugás más, desinstalalo desde Steam.",
+            Hallazgo(tr("Steam"), tr("Juegos instalados en {lib}", lib=steam), Nivel.INFO, 79 * GB,
+                     tr("Lo que pesa cada juego (y herramientas como Proton). Si alguno no lo jugás más, "
+                        "desinstalalo desde Steam."),
                      detalle=[Item("Cyberpunk 2077", 65 * GB), Item("Hades II", 9 * GB), Item("Terraria", 5 * GB)],
                      suma=False),
         ]
         for i, x in enumerate(H, 1):
             x.numero = i
-        ctx.etiquetas[str(h / ".local/share/Steam/steamapps/common")] = "juegos de Steam"
+        ctx.etiquetas[str(h / ".local/share/Steam/steamapps/common")] = tr("juego: {nombre}", nombre="Steam")
         return Resultado(ctx, H)
 
     def programas(self) -> list[Programa]:
@@ -141,16 +178,20 @@ class Demo:
             return Programa(id_, nombre, origen, int(gb * GB), desc,
                             ultimo_uso=ahora - uso_dias * DIA if uso_dias is not None else None,
                             instalado=ahora - inst_dias * DIA, uso_conocido=conocido)
+
+        def juego(appid):
+            return tr("juego · appid {appid} · {donde}", appid=appid, donde="~/.local/share/Steam")
         return [
-            p("1091500", "Cyberpunk 2077", "steam", 65, "juego · appid 1091500 · ~/.local/share/Steam", 210),
-            p("1145350", "Hades II", "steam", 9, "juego · appid 1145350 · ~/.local/share/Steam", 2),
+            p("1091500", "Cyberpunk 2077", "steam", 65, juego("1091500"), 210),
+            p("1145350", "Hades II", "steam", 9, juego("1145350"), 2),
             p("android-studio", "android-studio", "aur", 2.9, "The official Android IDE", None, 300),
             p("libreoffice-fresh", "libreoffice-fresh", "repo", 1.4, "LibreOffice branch with new features", 45),
             p("com.spotify.Client", "Spotify", "flatpak", 0.9, "com.spotify.Client", 0),
             p("blender", "blender", "repo", 0.8, "A fully integrated 3D graphics creation suite", 380, 400),
             p("gimp", "gimp", "repo", 0.4, "GNU Image Manipulation Program", 12),
             p("obs-studio", "obs-studio", "repo", 0.2, "Free and open source software for video recording", 30),
-            p("/home/usuario/Aplicaciones/Krita.AppImage", "Krita", "appimage", 0.3, "~/Aplicaciones/Krita.AppImage",
+            p(f"/home/usuario/{C['Aplicaciones']}/Krita.AppImage", "Krita", "appimage", 0.3,
+              f"~/{C['Aplicaciones']}/Krita.AppImage",
               None, 90),
             p("htop", "htop", "repo", 0.001, "Interactive process viewer", 1),
         ]
@@ -163,7 +204,7 @@ class Demo:
             antes = dias >= 7
             cambios = {f"{h}/.cache": (1200 + (14 - dias) * 200) * MB}
             if antes:
-                cambios |= {f"{h}/Juegos": 0, f"{h}/Juegos/Hollow Knight": 0,
+                cambios |= {f"{h}/{C['Juegos']}": 0, f"{h}/{C['Juegos']}/Hollow Knight": 0,
                             f"{h}/Videos": 22 * GB, f"{h}/Videos/2025": 22 * GB}
                 for d in (".local", ".local/share", ".local/share/Steam", ".local/share/Steam/steamapps",
                           ".local/share/Steam/steamapps/workshop"):
@@ -256,8 +297,8 @@ def main() -> None:
         p.start()
     try:
         estado._escribir("analisis", {"fecha": "2026-10-06T10:00:00", "seguro": 9 * GB, "revisar": 61 * GB,
-                                      "cantidad": 10, "principales": [["🟡", "Juegos instalados por fuera de Steam",
-                                                                       38 * GB]]})
+                                      "cantidad": 10,
+                                      "principales": [["🟡", tr("Juegos instalados por fuera de Steam"), 38 * GB]]})
         estado._escribir("limpieza", {"fecha": "2026-10-03T18:20:00", "liberado": 7 * GB, "ok": 12, "total": 12})
         demo.historial()
         asyncio.run(capturar(demo))

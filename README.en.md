@@ -10,10 +10,10 @@ A disk analyzer and cleaner for Arch Linux that runs in the terminal and works w
 tells you **what is taking up space, why, and what can be deleted**. It also uninstalls programs
 **without leaving a trace**.
 
-> ℹ️ The interface is in Spanish for now. The screenshots below give you an idea of what each
-> screen does. Translations are welcome.
+> 🌐 English and Spanish: ArchCleaner follows your system language. You can force it with
+> `archcleaner --lang en` or `ARCHCLEANER_LANG=en`.
 
-![ArchCleaner main menu](docs/capturas/menu.svg)
+![ArchCleaner main menu](docs/capturas/en/menu.svg)
 
 No more going folder by folder hunting for what fills your disk. ArchCleaner scans your drives and
 recognizes known junk: caches, logs, old packages, Steam leftovers, forgotten `node_modules`, and
@@ -35,7 +35,7 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
   - A **dry-run mode** (`simulacro`) shows everything without running anything.
 - **Anything doubtful goes to the trash**, so you can restore it.
   - Permanent deletion is optional.
-  - To confirm it, you have to **type `borrar`** ("delete").
+  - To confirm it, you have to **type `delete`**.
 - **It never runs as root.**
   - It asks for `sudo` only for the specific step that needs it, and you type the password yourself
     in the terminal.
@@ -52,18 +52,18 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
 - **Anything that looks like game saves** (folders such as `saves` or `worlds`) is never pre-selected.
 - **It can create a Timeshift snapshot** before uninstalling, so you can roll back if something goes wrong.
 - **Everything is logged** in `~/.local/state/archcleaner/acciones.log`.
-- **It is open source and tested.** 64 automated tests run on every change. They cover the safety
+- **It is open source and tested.** 68 automated tests run on every change. They cover the safety
   rules, and they drive the app with mouse clicks inside a fake home folder.
 
 ## 📸 Screenshots
 
 | Analysis | Choosing what to clean |
 |---|---|
-| ![Analysis](docs/capturas/analisis.svg) | ![Clean](docs/capturas/limpiar.svg) |
-| **Permanent deletion: you must type "borrar"** | **Uninstall: sort by least used** |
-| ![Confirm deletion](docs/capturas/confirmar-borrado.svg) | ![Uninstall](docs/capturas/desinstalar.svg) |
+| ![Analysis](docs/capturas/en/analisis.svg) | ![Clean](docs/capturas/en/limpiar.svg) |
+| **Permanent deletion: you must type "delete"** | **Uninstall: sort by least used** |
+| ![Confirm deletion](docs/capturas/en/confirmar-borrado.svg) | ![Uninstall](docs/capturas/en/desinstalar.svg) |
 | **What grew since last week** | **Explore folders by size** |
-| ![What grew](docs/capturas/que-crecio.svg) | ![Explore](docs/capturas/explorar.svg) |
+| ![What grew](docs/capturas/en/que-crecio.svg) | ![Explore](docs/capturas/en/explorar.svg) |
 
 > The screenshots come from a demo machine, built by [`docs/generar_capturas.py`](docs/generar_capturas.py).
 
@@ -101,22 +101,22 @@ is stored in `~/.local/state/archcleaner/`. Delete that folder if you don't want
 
 ## 🚀 Usage
 
-The commands are in Spanish. This is what each one does:
-
 ```bash
 archcleaner                      # the app: a menu with everything (keyboard or mouse)
-archcleaner analizar             # full report in the terminal (read-only)
-archcleaner analizar --rapido    # quick: only known junk sources, without scanning whole drives
-archcleaner limpiar --simulacro  # pick what to clean and see the plan, without deleting (dry run)
-archcleaner limpiar              # same, but asks for confirmation and then runs it
-archcleaner desinstalar          # pick a program from the list to uninstall
-archcleaner desinstalar steam    # go straight to that program
-archcleaner explorar ~/Downloads # browse folders sorted by size
-archcleaner crecio --dias 7      # what grew in the last 7 days
+archcleaner analyze              # full report in the terminal (read-only)
+archcleaner analyze --quick      # only known junk sources, without scanning whole drives
+archcleaner clean --dry-run      # pick what to clean and see the plan, without deleting anything
+archcleaner clean                # same, but asks for confirmation and then runs it
+archcleaner uninstall            # pick a program from the list to uninstall
+archcleaner uninstall steam      # go straight to that program
+archcleaner explore ~/Downloads  # browse folders sorted by size
+archcleaner grew --days 7        # what grew in the last 7 days
 ```
 
+The Spanish command names (`analizar`, `limpiar`, `desinstalar`, `explorar`, `crecio`) work too.
+
 Everything can be clicked.
-- **🔄 Actualizar** (`F5`) rescans on any screen.
+- **🔄 Refresh** (`F5`) rescans on any screen.
 - **Alt+← / Alt+→** go back and forward. The side buttons of your mouse do the same, if your terminal
   sends them.
 
@@ -129,7 +129,7 @@ Everything can be clicked.
 2. **Choose the leftovers.** *Safe* ones (exact name match) come pre-selected. *Probable* ones don't.
 3. **Plan → trash or permanent deletion → Timeshift snapshot (optional) → confirm.**
 4. **Uninstall and verify.** ArchCleaner stops the services, uninstalls the program and deletes the
-   leftovers. Then it checks again and shows either "Rastro: 0" (no trace left) or what remains and why.
+   leftovers. Then it checks again and shows either "Trace left: 0" or what remains and why.
 
 It works with:
 - programs from the official repos and the AUR (using `pacman -Rns`);
@@ -193,7 +193,7 @@ safety check. Outside your home folder and your data drives, Explore is read-onl
 
 ```bash
 python -m unittest discover -s tests     # tests (they never touch your files: they use a fake home)
-python docs/generar_capturas.py          # regenerates the README screenshots
+python docs/generar_capturas.py          # regenerates the README screenshots (both languages)
 ```
 
 The code is in Spanish. Main modules:
@@ -201,6 +201,10 @@ The code is in Spanish. Main modules:
 - `seguridad.py` is the last check before anything is deleted.
 - `detectores/` has one file per junk source.
 - `tui/` contains the app, built with [Textual](https://textual.textualize.io/).
+
+**Translations:** visible texts are written in Spanish inside `tr("…")`, and their English version
+lives in [`archcleaner/idiomas/en.py`](archcleaner/idiomas/en.py). A test fails if one is missing.
+New languages are welcome.
 
 **Adding a junk source:**
 1. Create `detectores/<name>.py` with a function `detectar(ctx) -> list[Hallazgo]`.

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ..contexto import Contexto
 from ..modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
+from ..i18n import tr
 
 MINIMO = 20 * 1024**2
 DIAS_OLVIDADO = 30
@@ -17,12 +18,12 @@ CACHES = [
     (".npm/_cacache", "npm", "npm cache clean --force"),
     (".cache/yarn", "yarn", "yarn cache clean"),
     (".cache/pnpm", "pnpm", "pnpm store prune"),
-    (".local/share/pnpm/store", "pnpm (store)", "pnpm store prune"),
+    (".local/share/pnpm/store", tr("pnpm (store)"), "pnpm store prune"),
     (".bun/install/cache", "bun", "bun pm cache rm"),
     (".cache/pip", "pip", "pip cache purge"),
     (".cache/uv", "uv", "uv cache clean"),
-    (".cache/go-build", "go (compilación)", "go clean -cache"),
-    ("go/pkg/mod", "go (módulos)", "go clean -modcache"),
+    (".cache/go-build", tr("go (compilación)"), "go clean -cache"),
+    ("go/pkg/mod", tr("go (módulos)"), "go clean -modcache"),
     (".cargo/registry/cache", "cargo", "borrar ~/.cargo/registry/cache"),
     (".gradle/caches", "gradle", "borrar ~/.gradle/caches"),
     (".m2/repository", "maven", "borrar ~/.m2/repository"),
@@ -43,10 +44,10 @@ def detectar(ctx: Contexto) -> list[Hallazgo]:
             rutas.append(d)
     if detalle:
         res.append(Hallazgo(
-            "Desarrollo", "Cachés de herramientas de programación", Nivel.SEGURO,
+            tr("Desarrollo"), tr("Cachés de herramientas de programación"), Nivel.SEGURO,
             sum(i.peso or 0 for i in detalle),
-            "Paquetes descargados por npm, pip, go, etc. Se vuelven a bajar solos cuando los necesitás "
-            "(la próxima instalación tarda un poco más).",
+            tr("Paquetes descargados por npm, pip, go, etc. Se vuelven a bajar solos cuando los necesitás "
+              "(la próxima instalación tarda un poco más)."),
             rutas=rutas, detalle=items_ordenados(detalle),
             limpieza=Limpieza(Modo.BORRAR, por_item=True),
         ))
@@ -76,17 +77,17 @@ def _proyectos_olvidados(ctx: Contexto) -> list[Hallazgo]:
             continue
         proyecto = os.path.dirname(d)
         dias = int((ahora - _ultima_modificacion(proyecto)) / 86400)
-        marca = f"sin tocar hace {dias} días" if dias >= DIAS_OLVIDADO else "proyecto activo"
+        marca = tr("sin tocar hace {n} días", n=dias) if dias >= DIAS_OLVIDADO else tr("proyecto activo")
         detalle.append(Item(f"{proyecto.replace(home, '~')}/{os.path.basename(d)}  ({marca})", peso, Path(d)))
         rutas.append(Path(d))
         ctx.reclamar(d)
     if not detalle:
         return []
     return [Hallazgo(
-        "Desarrollo", "Dependencias de proyectos (node_modules / venv)", Nivel.REVISAR,
+        tr("Desarrollo"), tr("Dependencias de proyectos (node_modules / venv)"), Nivel.REVISAR,
         sum(i.peso or 0 for i in detalle),
-        "Librerías instaladas por proyecto. Se regeneran con `npm install` o `pip install -r ...`. "
-        "Las de proyectos que no tocás hace rato son buenas candidatas.",
+        tr("Librerías instaladas por proyecto. Se regeneran con `npm install` o `pip install -r ...`. "
+          "Las de proyectos que no tocás hace rato son buenas candidatas."),
         rutas=rutas, detalle=items_ordenados(detalle),
         limpieza=Limpieza(Modo.PAPELERA, por_item=True),
     )]

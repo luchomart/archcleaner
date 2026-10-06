@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import tempfile
 import time
@@ -12,6 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+os.environ["ARCHCLEANER_LANG"] = "es"  # los tests verifican los textos en español
 
 from archcleaner import estado, historial
 from archcleaner.historial import DIA, Foto, comparar, culpables, que_borrar

@@ -41,7 +41,7 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
-- **Código abierto y con tests:** 64 tests automáticos (las reglas de seguridad, y la app manejada
+- **Código abierto y con tests:** 68 tests automáticos (las reglas de seguridad, y la app manejada
   con clics en un home falso) corren en cada cambio.
 
 ## 📸 Capturas
@@ -80,7 +80,10 @@ Opcionales: `pacman-contrib` (limpiar la caché de pacman), `timeshift` (snapsho
 `~/.local/state/archcleaner/`: borrá esa carpeta si no los querés.
 
 **Requisitos:** Arch Linux (o derivadas con pacman), Python ≥ 3.12 y una terminal moderna con mouse
-(Konsole, Kitty, Alacritty, GNOME Terminal, WezTerm…). La interfaz está en español.
+(Konsole, Kitty, Alacritty, GNOME Terminal, WezTerm…).
+
+**Idioma:** español o inglés, según el idioma de tu sistema. Se puede forzar con `archcleaner --lang en`
+(o la variable `ARCHCLEANER_LANG`). Los comandos también tienen nombre en inglés (`analyze`, `clean`…).
 
 ## 🚀 Uso
 
@@ -141,7 +144,7 @@ barrera de seguridad; fuera de tu home y de tus discos de datos es solo para mir
 
 ```bash
 python -m unittest discover -s tests     # los tests (no tocan tus archivos: usan un home falso)
-python docs/generar_capturas.py          # regenera las capturas del README
+python docs/generar_capturas.py          # regenera las capturas del README (español e inglés)
 ```
 
 ```
@@ -153,6 +156,9 @@ archcleaner/
   detectores/     un archivo por fuente de basura
   tui/            la app (textual): una pantalla por paso
 ```
+
+Los textos visibles se escriben en español dentro de `tr("…")` y su traducción va en
+[`archcleaner/idiomas/en.py`](archcleaner/idiomas/en.py); un test avisa si falta alguna.
 
 Para sumar una fuente de basura nueva: crear `detectores/<nombre>.py` con
 `detectar(ctx) -> list[Hallazgo]` y agregarlo a `DETECTORES` en `detectores/__init__.py`.

@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .modelo import Hallazgo, Nivel
+from .i18n import tr
 
 ARCHIVO = Path.home() / ".local/state/archcleaner/estado.json"
 LOG = Path.home() / ".local/state/archcleaner/acciones.log"
@@ -106,10 +107,10 @@ def hace(fecha_iso: str) -> str:
     except ValueError:
         return "?"
     if seg < 60:
-        return "recién"
+        return tr("recién")
     if seg < 3600:
-        return f"hace {int(seg // 60)} min"
+        return tr("hace {n} min", n=int(seg // 60))
     if seg < 86400:
-        return f"hace {int(seg // 3600)} h"
+        return tr("hace {n} h", n=int(seg // 3600))
     dias = int(seg // 86400)
-    return "ayer" if dias == 1 else f"hace {dias} días"
+    return tr("ayer") if dias == 1 else tr("hace {n} días", n=dias)

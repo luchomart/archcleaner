@@ -36,6 +36,7 @@ from .mouse_lateral import activar as activar_mouse_lateral
 from .plan import PlanScreen
 from .programas import ElegirProgramaScreen
 from .seleccion import SeleccionScreen
+from ..i18n import tr
 
 activar_mouse_lateral()
 
@@ -116,8 +117,8 @@ class ArchCleanerApp(App[None]):
     CSS = CSS
     # Botones laterales del mouse (ver mouse_lateral.py) y su equivalente con teclado.
     BINDINGS = [
-        Binding("alt+left", "atras", "Atrás", show=False, priority=True),
-        Binding("alt+right", "adelante", "Adelante", show=False, priority=True),
+        Binding("alt+left", "atras", tr("Atrás"), show=False, priority=True),
+        Binding("alt+right", "adelante", tr("Adelante"), show=False, priority=True),
     ]
 
     def __init__(self, inicio: str = "menu", programa: str | None = None, simulacro: bool = False):
@@ -169,7 +170,7 @@ class ArchCleanerApp(App[None]):
             prog.dismiss()
 
     async def _analizar(self) -> Resultado:
-        prog = Progreso("🔍 Analizando el disco…", barra=True)
+        prog = Progreso(tr("🔍 Analizando el disco…"), barra=True)
         await self.push_screen(prog)
         try:
             res = await asyncio.to_thread(
@@ -198,16 +199,17 @@ class ArchCleanerApp(App[None]):
     @work(exclusive=True, group="flujo")
     async def flujo_actualizar(self) -> None:
         await self._analizar()
-        self.notify("Datos actualizados.", title="🔄 Actualizar")
+        self.notify(tr("Datos actualizados."), title=tr("🔄 Actualizar"))
 
     @work(exclusive=True, group="flujo")
     async def flujo_analizar(self) -> None:
         res = await self._analizar()
         while True:
             r = await self.push_screen_wait(Vista(
-                "🔍 Análisis de disco", componer(res, pie=False, comparacion=self._comparacion()),
-                [("limpiar", "🧹 Limpiar ahora", "success"), ESPACIO, ACTUALIZAR, ("volver", "🏠 Inicio", "default")],
-                "Solo lectura: no se borró nada. Rueda del mouse o flechas para recorrer."))
+                tr("🔍 Análisis de disco"), componer(res, pie=False, comparacion=self._comparacion()),
+                [("limpiar", tr("🧹 Limpiar ahora"), "success"), ESPACIO, ACTUALIZAR,
+                 ("volver", tr("🏠 Inicio"), "default")],
+                tr("Solo lectura: no se borró nada. Rueda del mouse o flechas para recorrer.")))
             if r == "actualizar":
                 res = await self._analizar()
                 continue
@@ -224,7 +226,7 @@ class ArchCleanerApp(App[None]):
         if ruta:
             ruta = os.path.realpath(os.path.expanduser(ruta))
             if not os.path.isdir(ruta):
-                self.notify(f"No existe la carpeta {ruta}", severity="error")
+                self.notify(tr("No existe la carpeta {ruta}", ruta=ruta), severity="error")
                 return
         else:
             ruta = await self.push_screen_wait(ElegirRaiz(res))
@@ -240,8 +242,8 @@ class ArchCleanerApp(App[None]):
             foto = historial.ultima()
             if foto is None or len(historial.listar()) < 2:
                 r = await self.push_screen_wait(Vista(
-                    "📈 Qué creció", [historial.sin_historial(len(historial.listar()))],
-                    [("actualizar", "🔍 Analizar ahora", "primary"), ESPACIO, ("volver", "🏠 Inicio", "default")]))
+                    tr("📈 Qué creció"), [historial.sin_historial(len(historial.listar()))],
+                    [("actualizar", tr("🔍 Analizar ahora"), "primary"), ESPACIO, ("volver", tr("🏠 Inicio"), "default")]))
             else:
                 r = await self.push_screen_wait(CrecioScreen(foto))
             if r != "actualizar":
@@ -268,10 +270,10 @@ class ArchCleanerApp(App[None]):
                 return None
             tareas = armar_tareas(res.hallazgos, sel)
             if not tareas:
-                self.notify("No quedó nada elegido.")
+                self.notify(tr("No quedó nada elegido."))
                 continue
             decision = await self.push_screen_wait(PlanScreen(
-                "📝 Plan de limpieza", panel_plan(tareas), tareas, simulacro=simulacro))
+                tr("📝 Plan de limpieza"), panel_plan(tareas), tareas, simulacro=simulacro))
             if decision == "atras":
                 continue  # vuelve a la lista con lo que habías tildado
             if decision is None:
@@ -288,13 +290,13 @@ class ArchCleanerApp(App[None]):
             return [Text(""), panel]
 
         pasos = [Paso(t.hallazgo.titulo, lambda ctx, t=t: _hacer_tarea(ctx, t)) for t in tareas]
-        await self.push_screen_wait(Ejecucion("🧹 Limpiando", pasos, final))
+        await self.push_screen_wait(Ejecucion(tr("🧹 Limpiando"), pasos, final))
 
     # ── desinstalar ──
 
     @work(exclusive=True, group="flujo")
     async def flujo_desinstalar(self, busqueda: str | None = None, simulacro: bool = False) -> None:
-        programas = await self._con_progreso("📦 Buscando programas instalados…", listar)
+        programas = await self._con_progreso(tr("📦 Buscando programas instalados…"), listar)
         prog = buscar(programas, busqueda)
         # Pasos: buscar → ficha → restos → plan. «◀ Atrás» vuelve al paso anterior; 🔄 vuelve a investigar.
         paso = "ficha" if prog else "buscar"
@@ -304,7 +306,7 @@ class ArchCleanerApp(App[None]):
             if paso == "buscar":
                 prog = await self.push_screen_wait(ElegirProgramaScreen(programas, busqueda or ""))
                 if prog == "actualizar":
-                    programas = await self._con_progreso("📦 Buscando programas instalados…", listar)
+                    programas = await self._con_progreso(tr("📦 Buscando programas instalados…"), listar)
                     continue
                 if prog is None:
                     return
@@ -312,15 +314,15 @@ class ArchCleanerApp(App[None]):
 
             elif paso == "ficha":
                 if ficha is None:
-                    ficha = await self._con_progreso(f"🔎 Investigando {prog.nombre}…", investigar, prog)
+                    ficha = await self._con_progreso(tr("🔎 Investigando {nombre}…", nombre=prog.nombre), investigar, prog)
                     if not sigue_instalado(prog):
-                        self.notify(f"{prog.nombre} ya no está instalado.", severity="warning")
+                        self.notify(tr("{nombre} ya no está instalado.", nombre=prog.nombre), severity="warning")
                         return
-                botones = [ESPACIO, ACTUALIZAR, ("volver", "🏠 Inicio", "default")] if ficha.bloqueo else \
-                    [("seguir", "Seguir ▸", "primary"), ESPACIO, ACTUALIZAR, ("volver", "Cancelar", "default")]
+                botones = [ESPACIO, ACTUALIZAR, ("volver", tr("🏠 Inicio"), "default")] if ficha.bloqueo else \
+                    [("seguir", tr("Seguir ▸"), "primary"), ESPACIO, ACTUALIZAR, ("volver", tr("Cancelar"), "default")]
                 r = await self.push_screen_wait(Vista(
-                    f"📦 Desinstalar {prog.nombre}", [panel_ficha(ficha)], botones,
-                    "Ficha: todo lo que se va y todo lo que dejaría. No se tocó nada."))
+                    tr("📦 Desinstalar {nombre}", nombre=prog.nombre), [panel_ficha(ficha)], botones,
+                    tr("Ficha: todo lo que se va y todo lo que dejaría. No se tocó nada.")))
                 if r == "actualizar":
                     ficha, sel = None, None
                     continue
@@ -333,7 +335,7 @@ class ArchCleanerApp(App[None]):
 
             elif paso == "restos":
                 s = await self.push_screen_wait(SeleccionScreen(
-                    ficha.restos, f"📦 {prog.nombre}: ¿qué restos borro?", SECCIONES, previa=sel))
+                    ficha.restos, tr("📦 {nombre}: ¿qué restos borro?", nombre=prog.nombre), SECCIONES, previa=sel))
                 if s == "actualizar":
                     paso, ficha, sel = "ficha", None, None
                     continue
@@ -347,8 +349,9 @@ class ArchCleanerApp(App[None]):
             elif paso == "plan":
                 restos = armar_tareas(ficha.restos, sel or {})
                 decision = await self.push_screen_wait(PlanScreen(
-                    f"📝 Plan: desinstalar {prog.nombre}", plan_desinstalar(ficha, restos), restos,
-                    simulacro=simulacro, snapshot=snapshot_sugerida(ficha), boton=f"📦 Desinstalar {prog.nombre}"))
+                    tr("📝 Plan: desinstalar {nombre}", nombre=prog.nombre), plan_desinstalar(ficha, restos), restos,
+                    simulacro=simulacro, snapshot=snapshot_sugerida(ficha),
+                    boton=tr("📦 Desinstalar {nombre}", nombre=prog.nombre)))
                 if decision == "atras":
                     paso = "restos" if ficha.restos else "ficha"
                     continue
@@ -361,21 +364,21 @@ class ArchCleanerApp(App[None]):
 
         def final(ctx: Ctx, oks: list[bool]) -> list:
             if len(oks) < len(pasos):  # se detuvo en un paso crítico (la desinstalación en sí)
-                return [Text("\nLa desinstalación no se completó: no toqué los restos.", style="bold yellow")]
+                return [Text(tr("\nLa desinstalación no se completó: no toqué los restos."), style="bold yellow")]
             v = verificar(ficha, restos, antes)
             if v.nuevos and ctx.preguntar(Dialogo(
-                    "Aparecieron restos nuevos",
-                    Text("Después de desinstalar quedaron cosas que antes eran del paquete (pacman deja las "
-                         "carpetas con archivos que no son suyos):\n\n" +
+                    tr("Aparecieron restos nuevos"),
+                    Text(tr("Después de desinstalar quedaron cosas que antes eran del paquete (pacman deja las "
+                           "carpetas con archivos que no son suyos):\n\n") +
                          "\n".join(f"  {humano(i.peso):>9}  {i.nombre}" for h in v.nuevos for i in h.detalle)),
-                    [("borrar", "🗑 Borrarlos también", "warning"), ("dejar", "Dejarlos", "default")])) == "borrar":
+                    [("borrar", tr("🗑 Borrarlos también"), "warning"), ("dejar", tr("Dejarlos"), "default")])) == "borrar":
                 for h in v.nuevos:
                     t = armar_tarea(h, list(range(len(h.detalle))))
                     _hacer_tarea(ctx, t)
                 v = verificar(ficha, restos, antes)
             return [Text(""), panel_verificacion(v, prog.nombre)]
 
-        await self.push_screen_wait(Ejecucion(f"📦 Desinstalando {prog.nombre}", pasos, final))
+        await self.push_screen_wait(Ejecucion(tr("📦 Desinstalando {nombre}", nombre=prog.nombre), pasos, final))
 
 
 # ── Pasos ────────────────────────────────────────────────────────────────────
@@ -390,12 +393,12 @@ def _hacer_tarea(ctx: Ctx, t: Tarea) -> tuple[bool, str]:
     for e in r.errores[:8]:
         ctx.log(f"    {e}", "yellow")
     if len(r.errores) > 8:
-        ctx.log(f"    … y {len(r.errores) - 8} errores más (ver el log)", "yellow")
+        ctx.log("    " + tr("… y {n} errores más (ver el log)", n=len(r.errores) - 8), "yellow")
     return r.ok, r.mensaje
 
 
 def _tarea_comando(titulo: str, comandos: list[list[str]], sudo: bool) -> Tarea:
-    h = Hallazgo("Desinstalar", titulo, Nivel.SEGURO, 0, "", limpieza=Limpieza(Modo.COMANDO, comandos, sudo=sudo))
+    h = Hallazgo(tr("Desinstalar"), titulo, Nivel.SEGURO, 0, "", limpieza=Limpieza(Modo.COMANDO, comandos, sudo=sudo))
     return armar_tarea(h)
 
 
@@ -404,46 +407,47 @@ def _pasos_desinstalar(ficha: Ficha, restos: list[Tarea], snapshot: bool) -> lis
     pasos: list[Paso] = []
     if snapshot:
         def hacer_snapshot(ctx: Ctx) -> tuple[bool, str]:
-            ctx.log("  puede tardar unos minutos…")
-            if ctx.correr(["sudo", *timeshift.comando_crear(f"antes de desinstalar {prog.nombre}")]) == 0:
-                return True, "snapshot creada"
-            seguir = ctx.preguntar(Dialogo("No se pudo crear la snapshot", Text("¿Seguir igual sin snapshot?"),
-                                           [("si", "Seguir sin snapshot", "warning"), ("no", "Cancelar", "default")]))
-            return seguir == "si", "sigo sin snapshot" if seguir == "si" else "cancelado"
-        pasos.append(Paso("🕒 Snapshot de Timeshift", hacer_snapshot, critico=True))
+            ctx.log(tr("  puede tardar unos minutos…"))
+            if ctx.correr(["sudo", *timeshift.comando_crear(tr("antes de desinstalar {nombre}", nombre=prog.nombre))]) == 0:
+                return True, tr("snapshot creada")
+            seguir = ctx.preguntar(Dialogo(tr("No se pudo crear la snapshot"), Text(tr("¿Seguir igual sin snapshot?")),
+                                           [("si", tr("Seguir sin snapshot"), "warning"),
+                                            ("no", tr("Cancelar"), "default")]))
+            return seguir == "si", tr("sigo sin snapshot") if seguir == "si" else "cancelado"
+        pasos.append(Paso(tr("🕒 Snapshot de Timeshift"), hacer_snapshot, critico=True))
 
     for s in ficha.servicios:
         cmd = ["systemctl", *(["--user"] if s.usuario else []), "disable", "--now", s.unidad]
-        t = _tarea_comando(f"Apagar {s.unidad}", [cmd], sudo=not s.usuario)
-        pasos.append(Paso(f"⚙️  Apagar el servicio {s.unidad}", lambda ctx, t=t: _hacer_tarea(ctx, t)))
+        t = _tarea_comando(tr("Apagar {unidad}", unidad=s.unidad), [cmd], sudo=not s.usuario)
+        pasos.append(Paso(tr("⚙️  Apagar el servicio {unidad}", unidad=s.unidad), lambda ctx, t=t: _hacer_tarea(ctx, t)))
 
     if prog.origen == "steam":
         def hacer_steam(ctx: Ctx) -> tuple[bool, str]:
             import subprocess
             subprocess.run(["xdg-open", f"steam://uninstall/{prog.id}"], capture_output=True)
             manifiesto = manifiesto_steam(prog)
-            ctx.log(f"  esperando a que Steam borre {manifiesto.name}…")
+            ctx.log(tr("  esperando a que Steam borre {archivo}…", archivo=manifiesto.name))
             # Steam borra el appmanifest_<appid>.acf al terminar de desinstalar: eso es la señal.
             r = ctx.esperar(Dialogo(
-                f"⏳ Esperando a Steam: {prog.nombre}",
+                tr("⏳ Esperando a Steam: {nombre}", nombre=prog.nombre),
                 Text.assemble(
-                    "Se abrió Steam con su ventana de desinstalación. ", ("Confirmá ahí.", "bold"), "\n\n",
-                    ("ArchCleaner se da cuenta solo cuando Steam termina y sigue con la limpieza.", "dim")),
-                [("cancelar", "Cancelar", "default")]),
+                    tr("Se abrió Steam con su ventana de desinstalación. "), (tr("Confirmá ahí."), "bold"), "\n\n",
+                    (tr("ArchCleaner se da cuenta solo cuando Steam termina y sigue con la limpieza."), "dim")),
+                [("cancelar", tr("Cancelar"), "default")]),
                 listo=lambda: not manifiesto.exists())
             if r != "auto":
-                return False, "cancelado (el juego sigue instalado)"
-            return True, "Steam lo desinstaló (detectado automáticamente)"
-        pasos.append(Paso(f"🎮 Desinstalar {prog.nombre} (Steam)", hacer_steam, critico=True))
+                return False, tr("cancelado (el juego sigue instalado)")
+            return True, tr("Steam lo desinstaló (detectado automáticamente)")
+        pasos.append(Paso(tr("🎮 Desinstalar {nombre} (Steam)", nombre=prog.nombre), hacer_steam, critico=True))
     elif prog.origen != "appimage":
-        t = _tarea_comando(f"Desinstalar {prog.nombre}", ficha.comandos, ficha.sudo)
+        t = _tarea_comando(tr("Desinstalar {nombre}", nombre=prog.nombre), ficha.comandos, ficha.sudo)
 
         def hacer_principal(ctx: Ctx, t=t) -> tuple[bool, str]:
             ok, msg = _hacer_tarea(ctx, t)
             if sigue_instalado(prog):
-                return False, "sigue instalado" + (f" ({msg})" if not ok else " (¿cancelaste en pacman?)")
+                return False, tr("sigue instalado") + (f" ({msg})" if not ok else tr(" (¿cancelaste en pacman?)"))
             return True, "desinstalado"
-        pasos.append(Paso(f"📦 Desinstalar {prog.nombre}", hacer_principal, critico=True))
+        pasos.append(Paso(tr("📦 Desinstalar {nombre}", nombre=prog.nombre), hacer_principal, critico=True))
 
     for t in restos:
         pasos.append(Paso(f"{t.hallazgo.nivel.icono} {t.hallazgo.titulo}", lambda ctx, t=t: _hacer_tarea(ctx, t)))

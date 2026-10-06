@@ -12,13 +12,14 @@ import stat
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from .i18n import tr
 
 RAIZ = Path("/timeshift/snapshots")
 CONFIG = Path("/etc/timeshift/timeshift.json")
 PREFIJO_COMENTARIO = "ArchCleaner:"
 
-ETIQUETAS = {"ondemand": "manual", "boot": "al arrancar", "hourly": "cada hora", "daily": "diaria",
-             "weekly": "semanal", "monthly": "mensual"}
+ETIQUETAS = {"ondemand": tr("manual"), "boot": tr("al arrancar"), "hourly": tr("cada hora"), "daily": tr("diaria"),
+             "weekly": tr("semanal"), "monthly": tr("mensual")}
 
 
 @dataclass

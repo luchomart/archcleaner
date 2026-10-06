@@ -17,15 +17,16 @@ from ..ficha import PROTEGIDOS
 from ..programas import ORDENES, Programa, hace, ordenar
 from ..util import acortar, humano
 from .comunes import ESPACIO, barra_botones
+from ..i18n import tr
 
 
 class ElegirProgramaScreen(Screen[Programa | str | None]):
     """Devuelve el programa elegido, None si se cancela, o "actualizar" para volver a leer la lista."""
 
     BINDINGS = [
-        Binding("escape", "salir", "Salir", priority=True),
-        Binding("f5", "actualizar", "Actualizar", priority=True),
-        Binding("f2", "siguiente_orden", "Ordenar", priority=True),
+        Binding("escape", "salir", tr("Salir"), priority=True),
+        Binding("f5", "actualizar", tr("Actualizar"), priority=True),
+        Binding("f2", "siguiente_orden", tr("Ordenar"), priority=True),
         Binding("down", "a_lista", show=False),
     ]
 
@@ -39,16 +40,17 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
 
     def compose(self) -> ComposeResult:
         yield Static(Text.assemble(
-            ("📦 Desinstalar", "bold cyan"), ("   ·   ", "dim"), (f"{len(self.programas)} programas instalados", "bold"),
-            ("\nElegir no desinstala nada: primero vas a ver la ficha completa.", "dim"),
+            (tr("📦 Desinstalar"), "bold cyan"), ("   ·   ", "dim"),
+            (tr("{n} programas instalados", n=len(self.programas)), "bold"),
+            (tr("\nElegir no desinstala nada: primero vas a ver la ficha completa."), "dim"),
         ), classes="cabecera")
         with Vertical():
-            yield Input(value=self.busqueda_inicial, placeholder="🔎 Escribí para buscar (nombre, descripción, origen)…",
+            yield Input(value=self.busqueda_inicial, placeholder=tr("🔎 Escribí para buscar (nombre, descripción, origen)…"),
                         id="buscar")
             yield Static(id="orden", classes="orden")
             yield OptionList(id="lista", classes="lista")
-        yield barra_botones([("elegir", "Ver ficha ▸", "primary"), ESPACIO,
-                             ("actualizar", "🔄 Actualizar", "default"), ("cancelar", "Cancelar", "default")])
+        yield barra_botones([("elegir", tr("Ver ficha ▸"), "primary"), ESPACIO,
+                             ("actualizar", tr("🔄 Actualizar"), "default"), ("cancelar", tr("Cancelar"), "default")])
 
     def on_mount(self) -> None:
         self._dibujar_orden()
@@ -58,7 +60,7 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
     # ── orden ──
 
     def _dibujar_orden(self) -> None:
-        partes = ["[dim]Ordenar por:[/]  "]
+        partes = ["[dim]" + tr("Ordenar por:") + "[/]  "]
         for clave, (texto, _) in ORDENES.items():
             if clave == self.orden:
                 partes.append(f"[bold reverse cyan] {texto} [/]  ")
@@ -66,7 +68,7 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
                 partes.append(f"[@click=screen.ordenar('{clave}')][cyan] {texto} [/][/]  ")
         partes.append("[dim](F2)[/]")
         if self.orden == "uso":
-            aclaracion = "«sin uso» = no se abrió desde que se instaló o actualizó"
+            aclaracion = tr("«sin uso» = no se abrió desde que se instaló o actualizó")
             if self.size.width >= 80 + len(aclaracion):  # si no entra, no se muestra
                 partes.append(f"   [dim]{aclaracion}[/]")
         self.query_one("#orden", Static).update("".join(partes))
@@ -149,7 +151,7 @@ def _celda_uso(p: Programa) -> tuple[str, str]:
         dias = (time.time() - p.ultimo_uso) / 86400
         estilo = "green" if dias < 7 else "default" if dias < 60 else "yellow"
     elif p.uso_conocido:
-        texto, estilo = ("nunca jugado" if p.origen == "steam" else "sin uso"), "yellow"
+        texto, estilo = (tr("nunca jugado") if p.origen == "steam" else tr("sin uso")), "yellow"
     else:
         texto, estilo = "—", "grey42"
     return f"{texto:>12}", estilo

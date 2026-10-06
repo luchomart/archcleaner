@@ -31,6 +31,7 @@ from . import estado
 from .escaner import Nodo
 from .modelo import Nivel
 from .util import humano
+from .i18n import tr
 
 UMBRAL = 1024**2          # carpetas más chicas no se guardan
 MINIMO_CAMBIO = 50 * 1024**2  # en la comparación, cambios más chicos no se muestran
@@ -49,7 +50,7 @@ class Foto:
 
     @property
     def cuando(self) -> str:
-        return datetime.fromtimestamp(self.fecha).strftime("%d/%m %H:%M")
+        return datetime.fromtimestamp(self.fecha).strftime(tr("%d/%m %H:%M"))
 
 
 def carpeta() -> Path:
@@ -289,8 +290,8 @@ def _signo(b: int) -> str:
 def hace_dias(dias: float) -> str:
     if dias < 1:
         horas = round(dias * 24)
-        return "hace menos de una hora" if horas < 1 else f"hace {horas} h"
-    return "hace 1 día" if round(dias) == 1 else f"hace {round(dias)} días"
+        return tr("hace menos de una hora") if horas < 1 else tr("hace {n} h", n=horas)
+    return tr("hace 1 día") if round(dias) == 1 else tr("hace {n} días", n=round(dias))
 
 
 def panel_resumen(comp: Comparacion) -> Panel:
@@ -304,16 +305,18 @@ def panel_resumen(comp: Comparacion) -> Panel:
         if punto in comp.antes.discos:
             d = libre - comp.antes.discos[punto][1]
             filas.add_row(punto, Text(_signo(d), style="red" if d < 0 else "green"),
-                          Text("de espacio libre", style="dim"))
+                          Text(tr("de espacio libre"), style="dim"))
     cuerpo: list = [filas]
     top = culpables(comp)
     if top:
-        cuerpo.append(Text("\nLo que más creció:", style="bold"))
+        cuerpo.append(Text("\n" + tr("Lo que más creció:"), style="bold"))
         for ruta, b in top:
             cuerpo.append(Text.assemble((f"  {_signo(b):>10}  ", "bold yellow"), _corto(ruta, home)))
     else:
-        cuerpo.append(Text(f"\nNinguna carpeta creció más de {humano(MINIMO_CAMBIO)}.", style="dim"))
-    titulo = f"[bold]📈 Desde el análisis del {comp.antes.cuando}[/] [dim]({hace_dias(comp.dias)})[/]"
+        cuerpo.append(Text("\n" + tr("Ninguna carpeta creció más de {minimo}.", minimo=humano(MINIMO_CAMBIO)),
+                           style="dim"))
+    titulo = ("[bold]" + tr("📈 Desde el análisis del {fecha}", fecha=comp.antes.cuando)
+              + f"[/] [dim]({hace_dias(comp.dias)})[/]")
     return Panel(Group(*cuerpo), title=titulo, title_align="left", border_style="magenta", box=box.ROUNDED)
 
 
@@ -321,45 +324,48 @@ def paneles(comp: Comparacion) -> list:
     """La comparación completa (pantalla «Qué creció» y `archcleaner crecio`)."""
     home = str(Path.home())
     res: list = [Text.assemble(
-        ("Comparando el análisis del ", "dim"), (comp.despues.cuando, "bold"), (" con el del ", "dim"),
-        (comp.antes.cuando, "bold"), (f"  ({hace_dias(comp.dias)} antes)", "dim"))]
+        (tr("Comparando el análisis del "), "dim"), (comp.despues.cuando, "bold"), (tr(" con el del "), "dim"),
+        (comp.antes.cuando, "bold"), (tr("  ({hace} antes)", hace=hace_dias(comp.dias)), "dim"))]
 
     # discos y basura
     t = Table(box=box.SIMPLE_HEAD, expand=False, padding=(0, 2))
     t.add_column("")
-    t.add_column("Antes", justify="right")
-    t.add_column("Ahora", justify="right")
-    t.add_column("Cambio", justify="right")
+    t.add_column(tr("Antes"), justify="right")
+    t.add_column(tr("Ahora"), justify="right")
+    t.add_column(tr("Cambio"), justify="right")
     for punto, (_, libre) in comp.despues.discos.items():
         if punto in comp.antes.discos:
             antes = comp.antes.discos[punto][1]
-            t.add_row(f"💽 Libre en {punto}", humano(antes), humano(libre),
+            t.add_row(tr("💽 Libre en {punto}", punto=punto), humano(antes), humano(libre),
                       Text(_signo(libre - antes), style="red" if libre < antes else "green"))
-    for nombre, a, b in (("🟢 Basura sin riesgo", comp.antes.seguro, comp.despues.seguro),
-                         ("🟡 Para revisar", comp.antes.revisar, comp.despues.revisar)):
+    for nombre, a, b in ((tr("🟢 Basura sin riesgo"), comp.antes.seguro, comp.despues.seguro),
+                         (tr("🟡 Para revisar"), comp.antes.revisar, comp.despues.revisar)):
         t.add_row(nombre, humano(a), humano(b), Text(_signo(b - a), style="yellow" if b > a else "green"))
-    res.append(Panel(t, title="[bold]Resumen[/]", title_align="left", border_style="grey50", box=box.ROUNDED))
+    res.append(Panel(t, title="[bold]" + tr("Resumen") + "[/]", title_align="left", border_style="grey50",
+                     box=box.ROUNDED))
 
+    minimo = humano(MINIMO_CAMBIO)
     for arboles, titulo, color, vacio in (
-            (comp.crecio, "📈 Lo que creció", "yellow", "Nada creció más de {}."),
-            (comp.achico, "📉 Lo que se achicó", "green", "Nada se achicó más de {}.")):
+            (comp.crecio, tr("📈 Lo que creció"), "yellow", tr("Nada creció más de {minimo}.", minimo=minimo)),
+            (comp.achico, tr("📉 Lo que se achicó"), "green", tr("Nada se achicó más de {minimo}.", minimo=minimo))):
         partes: list = []
         for raiz in arboles:
             if not raiz.hijos:
                 continue
-            nombre = "~ (tu home)" if raiz.ruta == home else "/ (sistema, sin tu home)" if raiz.ruta == "/" \
-                else raiz.ruta
+            nombre = tr("~ (tu home)") if raiz.ruta == home else tr("/ (sistema, sin tu home)") \
+                if raiz.ruta == "/" else raiz.ruta
             neto = raiz.peso if color == "yellow" else -raiz.peso
-            arbol = Tree(Text.assemble((nombre, "bold cyan"), (f"   (cambio neto: {_signo(neto)})", "dim")),
+            arbol = Tree(Text.assemble((nombre, "bold cyan"), (tr("   (cambio neto: {cambio})", cambio=_signo(neto)),
+                                                               "dim")),
                          guide_style="grey35")
             _ramas(arbol, raiz, color, comp)
             partes.append(arbol)
         if not partes:
-            partes = [Text(vacio.format(humano(MINIMO_CAMBIO)), style="dim")]
+            partes = [Text(vacio, style="dim")]
         res.append(Panel(Group(*partes), title=f"[bold]{titulo}[/]", title_align="left", border_style=color,
                          box=box.ROUNDED, padding=(0, 1)))
-    res.append(Text(f"Solo se muestran cambios de más de {humano(MINIMO_CAMBIO)}. «nueva» = no estaba en el "
-                    "análisis anterior; «ya no está» = se borró.", style="dim"))
+    res.append(Text(tr("Solo se muestran cambios de más de {minimo}. «nueva» = no estaba en el "
+                       "análisis anterior; «ya no está» = se borró.", minimo=minimo), style="dim"))
     return res
 
 
@@ -368,16 +374,16 @@ def _ramas(t: Tree, nodo: Nodo, color: str, comp: Comparacion) -> None:
     for h in nodo.hijos:
         linea = Text.assemble((f"{signo + humano(h.peso):>10} ", f"bold {color}"), " ", h.etiqueta)
         if h.ruta in comp.nuevas:
-            linea.append("  nueva", style="magenta")
+            linea.append(tr("  nueva"), style="magenta")
         elif h.ruta in comp.borradas:
-            linea.append("  ya no está", style="magenta")
+            linea.append(tr("  ya no está"), style="magenta")
         _ramas(t.add(linea), h, color, comp)
 
 
 def sin_historial(fotos: int, en_app: bool = True) -> Text:
-    analizar = "tocá 🔄 Actualizar" if en_app else "corré «archcleaner analizar»"
+    analizar = tr("tocá 🔄 Actualizar") if en_app else tr("corré «archcleaner analizar»")
     if fotos == 0:
-        return Text("Todavía no hay historial: se empieza a guardar con cada análisis completo. "
-                    f"Analizá hoy ({analizar}) y volvé otro día para ver qué creció.")
-    return Text("Hay un solo análisis guardado: hace falta otro para comparar. "
-                f"Volvé a analizar más adelante (o {analizar} para analizar ahora).")
+        return Text(tr("Todavía no hay historial: se empieza a guardar con cada análisis completo. "
+                       "Analizá hoy ({como}) y volvé otro día para ver qué creció.", como=analizar))
+    return Text(tr("Hay un solo análisis guardado: hace falta otro para comparar. "
+                   "Volvé a analizar más adelante (o {como} para analizar ahora).", como=analizar))

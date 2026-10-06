@@ -18,16 +18,17 @@ from .. import historial
 from ..historial import Foto
 from ..util import humano
 from .comunes import ACTUALIZAR, ESPACIO, barra_botones, cabecera
+from ..i18n import tr
 
 # (clave, texto, días atrás; None = el análisis anterior)
-OPCIONES = [("anterior", "Análisis anterior", None), ("semana", "Hace 1 semana", 7), ("mes", "Hace 1 mes", 30)]
+OPCIONES = [("anterior", tr("Análisis anterior"), None), ("semana", tr("Hace 1 semana"), 7), ("mes", tr("Hace 1 mes"), 30)]
 
 
 class CrecioScreen(Screen[str | None]):
     """Devuelve "actualizar" (analizar de nuevo y volver), "atras" o None."""
 
-    BINDINGS = [Binding("escape", "volver", "Inicio"), Binding("r,f5", "actualizar", "Actualizar"),
-                Binding("f2", "siguiente", "Comparar con…")]
+    BINDINGS = [Binding("escape", "volver", tr("Inicio")), Binding("r,f5", "actualizar", tr("Actualizar")),
+                Binding("f2", "siguiente", tr("Comparar con…"))]
 
     def __init__(self, actual: Foto):
         super().__init__()
@@ -36,11 +37,12 @@ class CrecioScreen(Screen[str | None]):
         self.fecha_elegida: float | None = None
 
     def compose(self) -> ComposeResult:
-        yield cabecera("📈 Qué creció", f"Último análisis: {self.actual.cuando}. Solo lectura: no se toca nada.")
+        yield cabecera(tr("📈 Qué creció"),
+                       tr("Último análisis: {fecha}. Solo lectura: no se toca nada.", fecha=self.actual.cuando))
         yield Static(id="comparar", classes="orden")
         with VerticalScroll(classes="cuerpo"):
             yield Static(id="contenido")
-        yield barra_botones([ESPACIO, ACTUALIZAR, ("volver", "🏠 Inicio", "primary")])
+        yield barra_botones([ESPACIO, ACTUALIZAR, ("volver", tr("🏠 Inicio"), "primary")])
 
     def on_mount(self) -> None:
         self._mostrar()
@@ -53,8 +55,8 @@ class CrecioScreen(Screen[str | None]):
         return historial.anterior(self.actual.fecha, dias)
 
     def _mostrar(self) -> None:
-        partes = ["[dim]Comparar con:[/]  "]
-        for clave, texto, _ in [*OPCIONES, ("fecha", "📅 Otra fecha…", None)]:
+        partes = ["[dim]" + tr("Comparar con:") + "[/]  "]
+        for clave, texto, _ in [*OPCIONES, ("fecha", tr("📅 Otra fecha…"), None)]:
             if clave == self.modo and clave != "fecha":
                 partes.append(f"[bold reverse cyan] {texto} [/]  ")
             else:
@@ -71,7 +73,7 @@ class CrecioScreen(Screen[str | None]):
         piezas = historial.paneles(comp)
         dias = dict((k, d) for k, _, d in OPCIONES).get(self.modo)
         if dias and comp.dias < dias - 1:
-            piezas.insert(0, Text(f"El análisis más viejo que hay es del {base.cuando}: comparo con ese.",
+            piezas.insert(0, Text(tr("El análisis más viejo que hay es del {fecha}: comparo con ese.", fecha=base.cuando),
                                   style="yellow"))
         contenido.update(Group(*piezas))
 
@@ -110,7 +112,7 @@ class CrecioScreen(Screen[str | None]):
 class ElegirFoto(ModalScreen[float | None]):
     """Lista de análisis guardados para comparar contra uno en particular."""
 
-    BINDINGS = [Binding("escape", "cancelar", "Cancelar")]
+    BINDINGS = [Binding("escape", "cancelar", tr("Cancelar"))]
 
     def __init__(self, actual: Foto):
         super().__init__()
@@ -118,22 +120,22 @@ class ElegirFoto(ModalScreen[float | None]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="dialogo"):
-            yield Static(Text("📅 ¿Con qué análisis comparo?", style="bold"), classes="dialogo-titulo")
+            yield Static(Text(tr("📅 ¿Con qué análisis comparo?"), style="bold"), classes="dialogo-titulo")
             if self.fechas:
                 yield OptionList(*[Option(self._fila(f), id=str(i)) for i, f in enumerate(self.fechas)],
                                  id="fotos", classes="lista")
             else:
-                yield Static(Text("No hay análisis anteriores guardados.", style="dim"))
-            yield barra_botones([ESPACIO, ("cancelar", "Cancelar", "default")])
+                yield Static(Text(tr("No hay análisis anteriores guardados."), style="dim"))
+            yield barra_botones([ESPACIO, ("cancelar", tr("Cancelar"), "default")])
 
     @staticmethod
     def _fila(f: float) -> Text:
         foto = historial.cargar(next(r for t, r in historial.listar() if t == f))
         libre = foto.discos.get("/", [0, 0])[1] if foto else 0
         return Text.assemble(
-            (datetime.fromtimestamp(f).strftime(" %d/%m/%Y  %H:%M"), "bold"),
+            (" " + datetime.fromtimestamp(f).strftime(tr("%d/%m/%Y %H:%M")), "bold"),
             (f"   {historial.hace_dias((datetime.now().timestamp() - f) / historial.DIA)}", "dim"),
-            (f"   libre en /: {humano(libre)}" if libre else "", "grey62"),
+            (tr("   libre en /: {libre}", libre=humano(libre)) if libre else "", "grey62"),
         )
 
     def on_option_list_option_selected(self, ev: OptionList.OptionSelected) -> None:
