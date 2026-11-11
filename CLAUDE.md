@@ -9,6 +9,11 @@ Estructura del código y cómo sumar un detector: sección "Para desarrolladores
 ## Comandos
 - Tests: `python -m unittest discover -s tests -v` (home falso; **correr la suite completa tras cada cambio**).
 - Linters: ruff + mypy en un venv (no están instalados en el sistema; `.venv/` está en `.gitignore`).
+  Crearlo: `python -m venv .venv && .venv/bin/pip install ruff mypy`. Hay avisos viejos: comparar solo
+  los archivos tocados (antes/después con `git stash`).
+- Cambios al prompt de `ia.py`: validarlos antes con `~/Escritorio/proyectos/ias-locales/pruebas/que_es_esto.py`
+  (carpetas reales e inventadas: que no empiece a inventar).
+- Tests de textual: en un `OptionList`, los separadores (`None`) ocupan una línea en pantalla pero no un índice.
 - Capturas: `python docs/generar_capturas.py` (es + en, siempre con datos inventados). Logo: `python docs/generar_logo.py`.
 - Probar la app real: comando `archcleaner` (symlink en `~/.local/bin` al `archcleaner.py` del repo; sin argumentos abre el menú).
 - Desinstalar de prueba: `tests/paquete-prueba/` arma un paquete falso, reinstalable.

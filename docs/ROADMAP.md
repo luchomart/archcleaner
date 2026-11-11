@@ -1,15 +1,13 @@
 # Hoja de ruta — ArchCleaner
 
 ## 📍 Dónde quedamos (actualizado 2026-11-11)
-- **v0.11.0 en preparación (sin publicar):**
-  - 🤖 «¿Qué es esto?» con IA local (Ollama, `qwen3.5:9b`, `archcleaner/ia.py`) en Explorar y en la lista
-    para limpiar (`tui/que_es.py`). Probado contra el Ollama real.
-  - 🙈 «No mostrar más» (`archcleaner/ignorados.py`, `tui/ocultos.py`): por ruta, desde la lista o Explorar (`i`).
-  - IA: prompt menos estricto (reconoce `node_modules`, `.venv`…), contexto del grupo y 🔎 Buscar en internet.
-  - Lista para limpiar: clic elige, clic en `[ ]` o espacio tilda.
-  - 101 tests. Pendiente en `ias-locales`: anotar el prompt nuevo en sus Decisiones (tarea 11).
-    Falta: usarlo un tiempo, regenerar las capturas si se quiere mostrar, y publicar
-    (subir versión, tag, release, sha256).
+- **v0.11.0 lista pero sin publicar: Luciano la está probando** con sus datos reales.
+  Novedades: 🤖 «¿Qué es esto?» (IA local opcional, `ia.py` + `tui/que_es.py`, en Explorar y en la lista
+  para limpiar; si duda, 🔎 Buscar en internet), 🙈 «No mostrar más» (`ignorados.py` + `tui/ocultos.py`,
+  por ruta, guardado en estado.json) y clic que elige sin tildar ([ ] o espacio tilda). 101 tests.
+- **Próximo paso:** juntar lo que no convenza al usarlo (con capturas). Cuando diga "publicá la 0.11":
+  regenerar capturas (`python docs/generar_capturas.py`, que muestren 🤖 y 🙈) → pasos de "Publicar una versión".
+- Pendiente fuera de este repo: anotar en `ias-locales` (Decisiones, tarea 11) el prompt nuevo de "known".
 - v0.10.1 publicada en GitHub. **Bloqueado: subir al AUR** (registro de cuentas cerrado por bots). Pasos abajo.
 
 ---

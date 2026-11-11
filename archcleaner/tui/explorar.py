@@ -217,7 +217,7 @@ class ExplorarScreen(Screen[None]):
         for i in range(len(partes)):
             ruta = str(Path(*partes[: i + 1]))
             if dentro_de(self.home, ruta) and ruta not in (self.home, "/"):
-                continue  # /home y /home/luciano se muestran como "~"
+                continue  # /home y /home/usuario se muestran como "~"
             texto = "~" if ruta == self.home else ("/" if ruta == "/" else partes[i])
             texto = texto.replace("[", "\\[")
             self.rutas_migas.append(ruta)
