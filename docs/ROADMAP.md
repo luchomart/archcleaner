@@ -5,7 +5,10 @@
   - 🤖 «¿Qué es esto?» con IA local (Ollama, `qwen3.5:9b`, `archcleaner/ia.py`) en Explorar y en la lista
     para limpiar (`tui/que_es.py`). Probado contra el Ollama real.
   - 🙈 «No mostrar más» (`archcleaner/ignorados.py`, `tui/ocultos.py`): por ruta, desde la lista o Explorar (`i`).
-  - 96 tests. Falta: usarlo un tiempo, regenerar las capturas si se quiere mostrar, y publicar
+  - IA: prompt menos estricto (reconoce `node_modules`, `.venv`…), contexto del grupo y 🔎 Buscar en internet.
+  - Lista para limpiar: clic elige, clic en `[ ]` o espacio tilda.
+  - 101 tests. Pendiente en `ias-locales`: anotar el prompt nuevo en sus Decisiones (tarea 11).
+    Falta: usarlo un tiempo, regenerar las capturas si se quiere mostrar, y publicar
     (subir versión, tag, release, sha256).
 - v0.10.1 publicada en GitHub. **Bloqueado: subir al AUR** (registro de cuentas cerrado por bots). Pasos abajo.
 

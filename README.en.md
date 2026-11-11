@@ -59,7 +59,7 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
 - **Anything that looks like game saves** (folders such as `saves` or `worlds`) is never pre-selected.
 - **It can create a Timeshift snapshot** before uninstalling, so you can roll back if something goes wrong.
 - **Everything is logged** in `~/.local/state/archcleaner/acciones.log`.
-- **It is open source and tested.** 96 automated tests run on every change. They cover the safety
+- **It is open source and tested.** 101 automated tests run on every change. They cover the safety
   rules, and they drive the app with mouse clicks inside a fake home folder.
 
 ## 📸 Screenshots
@@ -124,6 +124,8 @@ archcleaner grew --days 7        # what grew in the last 7 days
 The Spanish command names (`analizar`, `limpiar`, `desinstalar`, `explorar`, `crecio`) work too.
 
 Everything can be clicked.
+- In the cleaning list, clicking a row **picks** it (to see what it is, 🤖 or 🙈). Clicking its `[ ]`
+  box, or pressing space, **selects** it for cleaning.
 - **🔄 Refresh** (`F5`) rescans on any screen.
 - **Alt+← / Alt+→** go back and forward. The side buttons of your mouse do the same, if your terminal
   sends them.
@@ -175,7 +177,8 @@ it and what happens if you delete it. It only gets the path, the size, the ownin
 of what is inside. It never sees file contents, and nothing leaves your PC.
 
 The AI only explains. It never changes a 🟢/🟡 mark and it can't delete anything. If it doesn't
-recognize a folder, it says so ("I'm not sure what this is"). The default model is `qwen3.5:9b`
+recognize a folder, it says so ("I'm not sure what this is") and offers **🔎 Search the web**, which
+opens your browser with a search for the name (only the name, never the full path). The default model is `qwen3.5:9b`
 (`ollama pull qwen3.5:9b`, about 6 GB). To use another one, set `ARCHCLEANER_MODELO`.
 
 ### 🙈 Don't show again

@@ -150,6 +150,25 @@ class TestDelLadoSeguro(ConOllama):
         self.assertEqual(ia.lineas(r, PIP), ["Caché de pip.", "Lo usa: pip.", "Si se borra, se regenera solo. Se vuelve a bajar."])
 
 
+class TestContextoYBusqueda(unittest.TestCase):
+    def test_el_contexto_del_grupo_le_llega_al_modelo(self):
+        d = ia.Datos("~/p/node_modules", True, "199 MB", contexto="Dependencias de proyectos: se regeneran con npm install.")
+        self.assertIn("ArchCleaner listed it under: Dependencias de proyectos", ia.mensaje(d, "es"))
+        self.assertNotIn("listed it under", ia.mensaje(PIP, "es"))
+
+    def test_conocer_es_saber_que_tipo_de_cosa_es(self):
+        self.assertIn("node_modules", ia.SISTEMA)
+        self.assertIn("an unfamiliar name means false", ia.SISTEMA)
+
+    def test_la_busqueda_lleva_solo_el_nombre(self):
+        from archcleaner.tui.que_es import url_busqueda
+        url = url_busqueda("/home/alguien/Escritorio/secreto/.impeccable")
+        self.assertTrue(url.startswith("https://duckduckgo.com/?q="))
+        self.assertIn("impeccable", url)
+        self.assertNotIn("alguien", url)
+        self.assertNotIn("secreto", url)
+
+
 class TestSinOllama(unittest.TestCase):
     def test_no_disponible(self):
         with mock.patch.dict(os.environ, {"OLLAMA_HOST": "127.0.0.1:9"}):  # puerto 9: nadie escucha
@@ -192,6 +211,23 @@ class TestPantalla(BaseTUI):
                 self.assertFalse(app.screen.query("#borrar") or app.screen.query("#papelera"))  # acá no se borra
                 await pilot.press("escape")
                 await self.esperar(app, "ExplorarScreen")
+
+    async def test_si_no_lo_conoce_ofrece_buscar_en_internet(self):
+        app = ArchCleanerApp()
+        r = ia.Respuesta(False, "Archivos de configuración.", "", "data", "")
+        with mock.patch.object(ia, "disponible", return_value=True), mock.patch.object(ia, "preguntar", return_value=r), \
+                mock.patch("archcleaner.tui.que_es.abrir_navegador") as abrir:
+            async with app.run_test(size=TAMANO) as pilot:
+                await self._explorar(app, pilot)
+                self.assertTrue(await self.esperar_que(lambda: app.screen.query_one("#que_es").display))
+                await pilot.press("question_mark")
+                await self.esperar(app, "QueEsEsto")
+                self.assertTrue(await self.esperar_que(lambda: app.screen.query_one("#buscar").display))
+                await pilot.click("#buscar")
+                await pilot.pause()
+        url = abrir.call_args.args[0]
+        self.assertIn("duckduckgo.com", url)
+        self.assertNotIn(str(self.home.name), url)
 
 
 if __name__ == "__main__":

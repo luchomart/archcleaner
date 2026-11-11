@@ -194,6 +194,25 @@ class TestLimpiar(BaseTUI):
             await self.esperar(app, "MenuScreen")
         self.assertTrue(self.cache.exists() and self.video.exists(), "se canceló: no se borra nada")
 
+    async def test_clic_en_la_fila_elige_y_clic_en_la_cajita_tilda(self):
+        app = ArchCleanerApp()
+        async with app.run_test(size=TAMANO) as pilot:
+            await self._hasta_el_plan(app, pilot)
+            lista = app.screen.query_one("#lista")
+            fila_video = next(i for i, o in enumerate(lista.options) if o.id == "h2-0")
+            y = fila_video + 2  # +1 por el borde de la lista y +1 por el separador entre 🟢 y 🟡
+            await pilot.click("#lista", offset=(30, y))  # sobre el nombre: solo la elige
+            await pilot.pause()
+            self.assertEqual(lista.highlighted, fila_video)
+            self.assertNotIn("h2-0", app.screen.marcados)
+            await pilot.click("#lista", offset=(9, y))  # sobre la cajita [ ] del ítem: la tilda
+            await pilot.pause()
+            self.assertIn("h2-0", app.screen.marcados)
+            await pilot.press("space")  # el espacio también: la destilda
+            await pilot.pause()
+            self.assertNotIn("h2-0", app.screen.marcados)
+            await pilot.click("#cancelar")
+
     async def _plan_con_video(self, app, pilot, destino: int):
         await self._hasta_el_plan(app, pilot)
         app.screen.marcados |= {"h2-0"}

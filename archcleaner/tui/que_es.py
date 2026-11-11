@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import os
 import stat
+import subprocess
+import urllib.parse
 from collections.abc import Callable
 from pathlib import Path
 
@@ -12,7 +14,7 @@ from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, LoadingIndicator, Static
 
@@ -20,7 +22,6 @@ from .. import i18n, ia
 from ..i18n import tr
 from ..util import ejecutar as correr
 from ..util import humano
-from .comunes import ESPACIO, barra_botones
 
 
 def paquetes_dueños(ruta: str) -> list[str]:
@@ -50,7 +51,10 @@ class QueEsEsto(ModalScreen[None]):
             yield Static(Text(tr("Explicación generada por IA local ({modelo}): puede equivocarse. "
                                  "No cambia lo que ArchCleaner marca como 🟢 o 🟡.", modelo=ia.modelo()),
                               style="dim italic"), id="aviso-ia")
-            yield barra_botones([ESPACIO, ("cerrar", tr("Cerrar"), "primary")])
+            with Horizontal(classes="botones"):
+                yield Button(tr("🔎 Buscar en internet"), id="buscar", classes="oculto")
+                yield Static(classes="espacio")
+                yield Button(tr("Cerrar"), id="cerrar", variant="primary")
 
     def on_mount(self) -> None:
         self.query_one("#cerrar", Button).focus()
@@ -62,21 +66,39 @@ class QueEsEsto(ModalScreen[None]):
         try:
             r = await asyncio.to_thread(ia.preguntar, self.datos, i18n.idioma)
             texto = Text("\n").join(Text(x) for x in ia.lineas(r, self.datos))
+            duda = not r.conocido
         except ia.SinIA as e:
-            texto = Text(str(e), style="yellow")
+            texto, duda = Text(str(e), style="yellow"), False
         if self.is_attached:
             self.query_one("#pensando").display = False
             self.query_one("#primera").display = False
             respuesta.update(texto)
+            if duda:  # la IA no lo conoce: que el usuario lo busque él (solo sale el nombre, y solo si aprieta)
+                self.query_one("#buscar", Button).remove_class("oculto")
 
     def on_button_pressed(self, ev: Button.Pressed) -> None:
+        if ev.button.id == "buscar":
+            abrir_navegador(url_busqueda(self.datos.ruta))
+            self.notify(tr("Abriendo el navegador…"))
+            return
         self.dismiss(None)
 
     def action_cerrar(self) -> None:
         self.dismiss(None)
 
 
-def datos_de(ruta: str | Path, peso: int | None, peso_carpeta: Callable[[str], int | None] = lambda _: None) -> ia.Datos:
+def abrir_navegador(url: str) -> None:
+    subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def url_busqueda(ruta: str) -> str:
+    """Búsqueda web con el NOMBRE (nunca la ruta entera: tiene tu usuario y nombres de tus carpetas)."""
+    nombre = os.path.basename(ruta.rstrip("/")) or ruta
+    return "https://duckduckgo.com/?q=" + urllib.parse.quote_plus(f'"{nombre}" linux')
+
+
+def datos_de(ruta: str | Path, peso: int | None, peso_carpeta: Callable[[str], int | None] = lambda _: None,
+             contexto: str = "") -> ia.Datos:
     """Arma lo que se le cuenta a la IA de una ruta cualquiera (para pantallas que no listan la carpeta).
     `peso_carpeta`: el peso medido de una subcarpeta, si se sabe (del último análisis)."""
     ruta = str(ruta)
@@ -96,4 +118,5 @@ def datos_de(ruta: str | Path, peso: int | None, peso_carpeta: Callable[[str], i
             pass
         filas.sort(key=lambda x: (x[1] is None, -(x[1] or 0), x[0].lower()))
         adentro = [(nombre, humano(p)) for nombre, p in filas[:ia.MAX_ADENTRO]]
-    return ia.Datos(ruta.replace(str(Path.home()), "~", 1), carpeta, humano(peso), paquetes_dueños(ruta), adentro)
+    return ia.Datos(ruta.replace(str(Path.home()), "~", 1), carpeta, humano(peso), paquetes_dueños(ruta), adentro,
+                    contexto)

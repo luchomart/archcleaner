@@ -7,7 +7,8 @@ queda en la PC (Ollama corre en localhost).
 El modelo no redacta la respuesta: llena un JSON con un esquema fijo y las frases las pone la app
 (traducidas con tr). Así "no estoy seguro" es un campo (`known`) y no algo que el modelo tenga que
 acordarse de escribir. Prompt, esquema y modelo salen de una comparación con 15 carpetas reales e
-inventadas (qwen3.5:9b: reconoció 22/24 reales y dudó en 6/6 inventadas).
+inventadas (qwen3.5:9b: reconoció 23/24 reales y dudó en 6/6 inventadas). "known" no pide conocer la
+ruta exacta sino el tipo de cosa: con la versión estricta dudaba hasta con node_modules y .venv.
 
 Modelo: ARCHCLEANER_MODELO (por defecto qwen3.5:9b). Servidor: OLLAMA_HOST (por defecto 127.0.0.1:11434).
 """
@@ -29,7 +30,7 @@ EFECTOS = ("rebuilt", "settings", "data", "package")
 SISTEMA = """You explain to a Linux user what a folder or file on their disk is. You get its path, size, the package that owns it (if any) and the largest items inside. You never see file contents.
 
 Reply with JSON:
-- "known": true only if you recognize this exact folder or file as part of a well-known program that you could describe even without seeing this path. A name in the path is not knowledge: an unfamiliar name means false.
+- "known": true if you recognize what this is: a well-known program, tool or standard kind of folder (for example node_modules, .venv, __pycache__, build caches, KDE caches), even if the exact path is new to you. A name you have never heard of is not knowledge: an unfamiliar name means false.
 - "what": one short sentence saying what it is. If "known" is false, do not name or describe any program: only say what the contents look like (for example "large data files with an index, maybe a database").
 - "program": the program that uses it, or "" if "known" is false.
 - "if_deleted": one of
@@ -80,6 +81,7 @@ class Datos:
     peso: str                                   # ya legible ("2.3 GB")
     paquetes: list[str] = field(default_factory=list)  # dueños según pacman ("pacman 7.1.0-1"); [] = ninguno
     adentro: list[tuple[str, str]] | None = None  # (nombre, peso legible), lo más pesado primero
+    contexto: str = ""  # dónde lo listó ArchCleaner ("Dependencias de proyectos: …"), si se sabe
 
 
 @dataclass
@@ -131,6 +133,8 @@ def mensaje(d: Datos, idioma: str) -> str:
     if d.adentro:
         lineas.append("Largest items inside:")
         lineas += [f"- {nombre} ({peso})" for nombre, peso in d.adentro[:MAX_ADENTRO]]
+    if d.contexto:
+        lineas.append(f"ArchCleaner listed it under: {d.contexto}")
     lineas.append(f"\nAnswer in {IDIOMA_MODELO.get(idioma, IDIOMA_MODELO['en'])[0]}.")
     return "\n".join(lineas)
 

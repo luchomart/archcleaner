@@ -654,8 +654,6 @@ TEXTOS: dict[str, str] = {
     "seleccionado: ": "selected: ",
     "\nNada se borra todavía: después vas a ver el plan y confirmar.   ":
         "\nNothing is deleted yet: next you'll see the plan and confirm.   ",
-    "clic o espacio: ": "click or space: ",
-    "tildar/destildar": "select/unselect",
     "   (con {programas} cerrado)": "   (with {programas} closed)",
 
     " de {total}": " of {total}",
@@ -707,4 +705,10 @@ TEXTOS: dict[str, str] = {
     "🙈 Está adentro de algo que ocultaste ({ruta}).": "🙈 It's inside something you hid ({ruta}).",
     "Elegí un ítem de la lista: la explicación del grupo ya está abajo.":
         "Pick an item from the list: the group's explanation is already below.",
+    "🔎 Buscar en internet": "🔎 Search the web",
+    "Abriendo el navegador…": "Opening the browser…",
+    "clic: ": "click: ",
+    "elegir": "pick",
+    "[ ] o espacio: ": "[ ] or space: ",
+    "tildar": "select",
 }

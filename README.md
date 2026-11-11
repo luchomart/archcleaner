@@ -48,7 +48,7 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
-- **Código abierto y con tests:** 96 tests automáticos (las reglas de seguridad, y la app manejada
+- **Código abierto y con tests:** 101 tests automáticos (las reglas de seguridad, y la app manejada
   con clics en un home falso) corren en cada cambio.
 
 ## 📸 Capturas
@@ -107,7 +107,9 @@ archcleaner explorar ~/Descargas # navegar carpetas ordenadas por peso
 archcleaner crecio --dias 7      # qué creció desde hace una semana
 ```
 
-Todo es clickeable. **🔄 Actualizar** (`F5`) vuelve a buscar en cualquier pantalla, y
+Todo es clickeable. En la lista para limpiar, un clic en una fila la **elige** (para ver qué es, 🤖 o 🙈)
+y un clic en su cajita `[ ]` (o la barra espaciadora) la **tilda**. **🔄 Actualizar** (`F5`) vuelve a
+buscar en cualquier pantalla, y
 **Alt+← / Alt+→** (o los botones laterales del mouse, si tu terminal los manda) van atrás y adelante.
 
 ### 📦 Desinstalar sin dejar rastro
@@ -140,7 +142,8 @@ botón 🤖 (o la tecla `?`), en Explorar y en la lista para elegir qué limpiar
 explica qué es la carpeta, qué programa la usa y qué
 pasa si la borrás. Le llega la ruta, el peso, el paquete dueño y los nombres de lo que hay adentro, nunca
 el contenido de los archivos, y nada sale de tu PC. **Solo explica:** no cambia ninguna marca 🟢/🟡 ni
-borra nada, y si no reconoce la carpeta lo dice («No estoy seguro de qué es»). Modelo por defecto:
+borra nada, y si no reconoce la carpeta lo dice («No estoy seguro de qué es») y ofrece
+**🔎 Buscar en internet**: abre tu navegador con una búsqueda del nombre (solo el nombre, nunca la ruta). Modelo por defecto:
 `qwen3.5:9b` (`ollama pull qwen3.5:9b`, ~6 GB); se cambia con la variable `ARCHCLEANER_MODELO`.
 
 ### 🙈 No mostrar más

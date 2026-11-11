@@ -1,6 +1,7 @@
 """Pantalla para tildar qué limpiar (o qué restos borrar). No borra nada: devuelve la selección.
 
-Se usa con teclado (espacio, s, n, enter) o con el mouse (clic en una fila tilda/destilda, botones abajo).
+Se usa con teclado (espacio, s, n, enter) o con el mouse: clic en una fila la elige (para ver su info,
+🤖 o 🙈) y clic en su cajita [ ] la tilda/destilda.
 También: ? = 🤖 qué es esto (IA local, si hay Ollama) · i = 🙈 no mostrar más (ver ignorados.py).
 """
 
@@ -14,7 +15,9 @@ from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual import events
 from textual.containers import Horizontal, Vertical
+from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import Button, OptionList, Static
 from textual.widgets.option_list import Option
@@ -28,6 +31,28 @@ from ..i18n import tr
 
 # Selección: número de hallazgo -> None (el hallazgo entero) o lista de índices del detalle.
 Seleccion = dict[int, list[int] | None]
+
+
+class Lista(OptionList):
+    """Como OptionList, pero un clic solo elige la fila: tildar es cosa de la cajita (ver SeleccionScreen)."""
+
+    class Clic(Message):
+        def __init__(self, indice: int, x: int) -> None:
+            super().__init__()
+            self.indice, self.x = indice, x
+
+    async def _on_click(self, event: events.Click) -> None:
+        indice: int | None = event.style.meta.get("option")
+        if indice is None or self._options[indice].disabled:
+            return
+        self.highlighted = indice
+        offset = event.get_content_offset(self)
+        self.post_message(self.Clic(indice, offset.x if offset else -1))
+
+
+# Columnas (dentro de la fila) donde está la cajita [ ]: en la fila de un grupo y en la de un ítem.
+CAJA_GRUPO = range(4)
+CAJA_ITEM = range(5, 10)
 
 
 @dataclass
@@ -101,7 +126,7 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
     def compose(self) -> ComposeResult:
         yield Static(id="cabecera", classes="cabecera")
         with Vertical():
-            yield OptionList(id="lista", classes="lista")
+            yield Lista(id="lista", classes="lista")
             yield Static(id="info", classes="info")
         with Horizontal(classes="botones barra-seleccion"):
             yield Button(tr("Continuar ▸"), id="continuar", variant="success")
@@ -190,7 +215,8 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
             ("   ·   ", "dim"), (tr("{n} grupos", n=len(sel)), "bold"),
             ("   ·   ", "dim"), (tr("seleccionado: "), "dim"), (humano(self.total()), "bold green"),
             (tr("\nNada se borra todavía: después vas a ver el plan y confirmar.   "), "dim"),
-            (tr("clic o espacio: "), "bold"), (tr("tildar/destildar"), "dim"),
+            (tr("clic: "), "bold"), (tr("elegir"), "dim"), ("  ·  ", "dim"),
+            (tr("[ ] o espacio: "), "bold"), (tr("tildar"), "dim"),
         ))
 
     def on_option_list_option_highlighted(self, ev: OptionList.OptionHighlighted) -> None:
@@ -213,8 +239,11 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
 
     # ── acciones ──
 
-    def on_option_list_option_selected(self, ev: OptionList.OptionSelected) -> None:
-        self.action_tildar()
+    def on_lista_clic(self, ev: Lista.Clic) -> None:
+        """Un clic ya eligió la fila; si cayó sobre la cajita, además la tilda/destilda."""
+        fila = self.filas.get(self.query_one(Lista).get_option_at_index(ev.indice).id or "")
+        if fila and ev.x in (CAJA_GRUPO if fila.item is None else CAJA_ITEM):
+            self.action_tildar()
 
     def action_tildar(self) -> None:
         lista = self.query_one(OptionList)
@@ -282,7 +311,9 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         if len(rutas) != 1:
             self.notify(tr("Elegí un ítem de la lista: la explicación del grupo ya está abajo."))
             return
-        self.app.push_screen(QueEsEsto(datos_de(rutas[0], peso, self._peso_carpeta)))
+        h = fila.hallazgo
+        contexto = f"{h.titulo}: {h.explicacion}"  # lo que ArchCleaner ya sabe del grupo: ayuda a la IA
+        self.app.push_screen(QueEsEsto(datos_de(rutas[0], peso, self._peso_carpeta, contexto)))
 
     @work
     async def action_ocultar(self) -> None:
