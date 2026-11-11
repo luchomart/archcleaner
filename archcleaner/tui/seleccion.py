@@ -1,23 +1,29 @@
 """Pantalla para tildar qué limpiar (o qué restos borrar). No borra nada: devuelve la selección.
 
 Se usa con teclado (espacio, s, n, enter) o con el mouse (clic en una fila tilda/destilda, botones abajo).
+También: ? = 🤖 qué es esto (IA local, si hay Ollama) · i = 🙈 no mostrar más (ver ignorados.py).
 """
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+from pathlib import Path
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, OptionList, Static
 from textual.widgets.option_list import Option
 
-from ..modelo import Hallazgo, Nivel
+from .. import ia, ignorados
+from ..modelo import Hallazgo, Item, Nivel
 from ..util import acortar, humano
-from .comunes import ESPACIO, barra_botones
+from .ocultos import Ocultos, confirmar_ocultar
+from .que_es import QueEsEsto, datos_de
 from ..i18n import tr
 
 # Selección: número de hallazgo -> None (el hallazgo entero) o lista de índices del detalle.
@@ -40,6 +46,8 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         Binding("enter", "continuar", tr("Continuar"), priority=True),
         Binding("escape", "salir", tr("Cancelar")),
         Binding("r,f5", "actualizar", tr("Actualizar")),
+        Binding("question_mark", "que_es", tr("¿Qué es esto? (IA local)")),
+        Binding("i", "ocultar", tr("No mostrar más")),
     ]
 
     def __init__(self, hallazgos: list[Hallazgo], titulo: str = tr("🧹 Elegí qué limpiar"),
@@ -47,7 +55,9 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         super().__init__()
         self.titulo = titulo
         self.secciones = secciones or {n: n.nombre for n in Nivel}
+        self.origen = hallazgos  # la lista del análisis: al ocultar algo se corrige ahí también
         self.hallazgos = [h for h in hallazgos if h.limpieza]
+        self.con_ia = False
         self.filas: dict[str, Fila] = {}
         self.marcados: set[str] = set()
         if previa is None:
@@ -93,15 +103,40 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
         with Vertical():
             yield OptionList(id="lista", classes="lista")
             yield Static(id="info", classes="info")
-        yield barra_botones([("continuar", tr("Continuar ▸"), "success"), ("seguros", tr("Solo 🟢"), "default"),
-                             ("ninguno", tr("Ninguno"), "default"), ESPACIO,
-                             ("actualizar", tr("🔄 Actualizar"), "default"), ("cancelar", tr("Cancelar"), "default")])
+        with Horizontal(classes="botones barra-seleccion"):
+            yield Button(tr("Continuar ▸"), id="continuar", variant="success")
+            yield Button(tr("Solo 🟢"), id="seguros")
+            yield Button(tr("Ninguno"), id="ninguno")
+            yield Button(tr("🤖 ¿Qué es?"), id="que_es", classes="oculto")
+            yield Button(tr("🙈 No mostrar"), id="ocultar")
+            yield Static(classes="espacio")
+            yield Button("", id="ocultos")
+            yield Button(tr("🔄 Actualizar"), id="actualizar")
+            yield Button(tr("Cancelar"), id="cancelar")
 
     def on_mount(self) -> None:
         self._redibujar()
         lista = self.query_one(OptionList)
         lista.focus()
         lista.highlighted = next((i for i, o in enumerate(lista.options) if not o.disabled), None)
+        self._boton_ocultos()
+        self._buscar_ia()
+
+    @work
+    async def _buscar_ia(self) -> None:
+        if await asyncio.to_thread(ia.disponible):
+            self.con_ia = True
+            self.query_one("#que_es", Button).remove_class("oculto")
+            self.refresh_bindings()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        return self.con_ia if action == "que_es" else True
+
+    def _boton_ocultos(self) -> None:
+        n = len(ignorados.lista())
+        boton = self.query_one("#ocultos", Button)
+        boton.label = tr("🙈 Ocultos ({n})", n=n)
+        boton.set_class(not n, "oculto")
 
     def _redibujar(self) -> None:
         lista = self.query_one(OptionList)
@@ -210,7 +245,82 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
     def on_button_pressed(self, ev: Button.Pressed) -> None:
         {"continuar": self.action_continuar, "seguros": self.action_solo_seguros,
          "ninguno": self.action_ninguno, "actualizar": self.action_actualizar,
+         "que_es": self.action_que_es, "ocultar": self.action_ocultar, "ocultos": self.action_ocultos,
          "cancelar": self.action_salir}[ev.button.id or "cancelar"]()
+
+    # ── 🤖 qué es · 🙈 no mostrar más ──
+
+    def _fila_resaltada(self) -> Fila | None:
+        lista = self.query_one(OptionList)
+        if lista.highlighted is None:
+            return None
+        return self.filas.get(lista.get_option_at_index(lista.highlighted).id or "")
+
+    @staticmethod
+    def _rutas_de(fila: Fila) -> tuple[list[Path], int | None]:
+        """Las rutas que representa una fila (un ítem, o todo el grupo) y cuánto pesan."""
+        h = fila.hallazgo
+        if fila.item is not None:
+            it = h.detalle[fila.item]
+            return ([it.ruta] if it.ruta else []), it.peso
+        if h.limpieza and h.limpieza.por_item:
+            return [it.ruta for it in h.detalle if it.ruta], h.peso
+        return list(h.rutas), h.peso
+
+    def _peso_carpeta(self, ruta: str) -> int | None:
+        res = getattr(self.app, "resultado", None)
+        for esc in (res.ctx.escaneos if res else []):
+            if ruta in esc.total and esc.contiene(ruta):
+                return esc.total[ruta]
+        return None
+
+    def action_que_es(self) -> None:
+        fila = self._fila_resaltada()
+        if not fila or not self.con_ia:
+            return
+        rutas, peso = self._rutas_de(fila)
+        if len(rutas) != 1:
+            self.notify(tr("Elegí un ítem de la lista: la explicación del grupo ya está abajo."))
+            return
+        self.app.push_screen(QueEsEsto(datos_de(rutas[0], peso, self._peso_carpeta)))
+
+    @work
+    async def action_ocultar(self) -> None:
+        fila = self._fila_resaltada()
+        if not fila:
+            return
+        rutas, peso = self._rutas_de(fila)
+        if not rutas:
+            self.notify(tr("Esto no se puede ocultar: no es una carpeta ni un archivo."), severity="warning")
+            return
+        if not await confirmar_ocultar(self.app, rutas, peso):
+            return
+        ignorados.ocultar(rutas, que=fila.hallazgo.titulo)
+        # lo tildado apunta a índices del detalle, que cambian al sacar ítems: se reubica por identidad
+        antes: list[tuple[Hallazgo, Item | None]] = [
+            (x, x.detalle[int(i.rsplit("-", 1)[1])] if "-" in i else None)
+            for x in self.hallazgos for i in self._ids_de(x) if i in self.marcados]
+        ignorados.aplicar(self.origen)
+        self.hallazgos = [x for x in self.origen if x.limpieza]
+        self.marcados = set()
+        for x, it in antes:
+            if not any(y is x for y in self.hallazgos):
+                continue
+            if it is None:
+                self.marcados.add(f"h{x.numero}")
+            elif (k := next((k for k, y in enumerate(x.detalle) if y is it), None)) is not None:
+                self.marcados.add(f"h{x.numero}-{k}")
+        self._redibujar()
+        self._boton_ocultos()
+        self.notify(tr("No se va a proponer más. Lo podés volver a mostrar desde «🙈 Ocultos»."), title="🙈")
+
+    @work
+    async def action_ocultos(self) -> None:
+        volver = await self.app.push_screen_wait(Ocultos())
+        if volver:
+            ignorados.mostrar(volver)
+            self._boton_ocultos()
+            self.notify(tr("Vuelve a aparecer en el próximo análisis: 🔄 Actualizar."), title="👁")
 
     def action_actualizar(self) -> None:
         self.dismiss("actualizar")

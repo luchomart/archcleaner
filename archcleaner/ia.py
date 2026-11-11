@@ -179,6 +179,7 @@ def preguntar(d: Datos, idioma: str) -> Respuesta:
     try:
         res = _pedir("/api/chat", cuerpo)
     except urllib.error.HTTPError as e:
+        e.close()
         if e.code == 404:
             raise SinIA(tr("Falta el modelo {modelo}. Bajalo con: ollama pull {modelo}", modelo=modelo())) from e
         raise SinIA(tr("Ollama respondió con un error ({codigo}).", codigo=e.code)) from e

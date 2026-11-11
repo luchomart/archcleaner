@@ -20,7 +20,7 @@ def leer() -> dict:
         return {}
 
 
-def _escribir(clave: str, valor: dict) -> None:
+def _escribir(clave: str, valor: dict | list) -> None:
     datos = leer()
     datos[clave] = valor
     try:
@@ -50,6 +50,11 @@ def guardar_preferencia(clave: str, valor) -> None:
     preferencias = leer().get("preferencias", {})
     preferencias[clave] = valor
     _escribir("preferencias", preferencias)
+
+
+def guardar_ocultos(ocultos: list[dict]) -> None:
+    """Lo que el usuario pidió no ver más (lo maneja ignorados.py)."""
+    _escribir("ocultos", ocultos)
 
 
 def tiempos_previos() -> dict:

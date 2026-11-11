@@ -529,8 +529,9 @@ TEXTOS: dict[str, str] = {
     "Inicio": "Home",
     "No se puede leer {carpeta}: {error}": "Can't read {carpeta}: {error}",
     "📂 Explorar": "📂 Explore",
-    "clic/enter entrar · ⌫ subir · Supr papelera · Shift+Supr borrar · o abrir carpeta · F5 medir":
-        "click/enter open · ⌫ up · Del trash · Shift+Del delete · o open folder · F5 measure",
+    "clic/enter entrar · ⌫ subir · Supr papelera · Shift+Supr borrar · o abrir carpeta · i ocultar · F5 medir":
+        "click/enter open · ⌫ up · Del trash · Shift+Del delete · o open folder · i hide · F5 measure",
+    "👁 Mostrar": "👁 Show",
     "← Subir": "← Up",
     "📂 Abrir": "📂 Open",
     "🗑 Papelera": "🗑 Trash",
@@ -681,4 +682,29 @@ TEXTOS: dict[str, str] = {
     "Si se borra, perdés configuración.": "If deleted, you lose settings.",
     "Si se borra, perdés datos.": "If deleted, you lose data.",
     "Es parte de un paquete: se quita desinstalándolo.": "It belongs to a package: remove it by uninstalling it.",
+    # ── 🙈 No mostrar más ──
+    "No mostrar más": "Don't show again",
+    "🙈 No mostrar más": "🙈 Don't show again",
+    "🙈 No mostrar": "🙈 Hide",
+    "🙈 Ocultos": "🙈 Hidden",
+    "🙈 Ocultos ({n})": "🙈 Hidden ({n})",
+    "\n\nNo se borra nada. ArchCleaner deja de proponerlo para borrar (también lo que tenga adentro), en este y en los próximos análisis.\nLo podés volver a mostrar desde «🙈 Ocultos».":
+        "\n\nNothing is deleted. ArchCleaner stops suggesting it for deletion (and anything inside it), now and in future scans.\nYou can show it again from «🙈 Hidden».",
+    "ArchCleaner no te propone borrar nada de esto. Tildá lo que quieras volver a ver: aparece de nuevo en el próximo análisis (🔄 Actualizar).":
+        "ArchCleaner doesn't suggest deleting any of this. Check what you want to see again: it comes back in the next scan (🔄 Refresh).",
+    "%d/%m/%Y": "%Y-%m-%d",
+    "👁 Volver a mostrar": "👁 Show again",
+    "(no hay nada oculto)": "(nothing is hidden)",
+    "No se va a proponer más. Lo podés volver a mostrar desde «🙈 Ocultos».":
+        "It won't be suggested again. You can show it again from «🙈 Hidden».",
+    "Vuelve a aparecer en el próximo análisis: 🔄 Actualizar.": "It comes back in the next scan: 🔄 Refresh.",
+    "Esto no se puede ocultar: no es una carpeta ni un archivo.": "This can't be hidden: it isn't a folder or a file.",
+    "Tiene algo que ocultaste ({ruta}), así que no se propone limpiarlo.":
+        "It contains something you hid ({ruta}), so it isn't suggested for cleaning.",
+    "Ya está oculta: está adentro de {ruta}.": "It's already hidden: it's inside {ruta}.",
+    "🙈 Oculta: no se propone borrarla. Con i (o «👁 Mostrar») vuelve a mostrarse.":
+        "🙈 Hidden: it isn't suggested for deletion. Press i (or «👁 Show») to show it again.",
+    "🙈 Está adentro de algo que ocultaste ({ruta}).": "🙈 It's inside something you hid ({ruta}).",
+    "Elegí un ítem de la lista: la explicación del grupo ya está abajo.":
+        "Pick an item from the list: the group's explanation is already below.",
 }

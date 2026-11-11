@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from .contexto import Contexto
 from .detectores import DETECTORES
+from . import ignorados
 from .escaner import escanear
 from .modelo import Hallazgo, Nivel
 from .i18n import tr
@@ -156,6 +157,7 @@ def analizar(
         res.tiempos["detectores"][nombre] = round(time.monotonic() - inicio, 2)
         barra.hecho += barra.parte_detector[nombre]
 
+    ignorados.aplicar(res.hallazgos)  # 🙈 lo que el usuario pidió no ver más
     # Orden fijo (nivel, y dentro de cada nivel de más pesado a más liviano) y un número para cada uno.
     orden = list(Nivel)
     res.hallazgos.sort(key=lambda h: (orden.index(h.nivel), -(h.peso or 0)))

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .detectores.steam import _tiene_partidas
+from . import ignorados
 from .escaner import escanear
 from .modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
 from .programas import Programa
@@ -107,6 +108,7 @@ def investigar(prog: Programa, home: Path | None = None) -> Ficha:
     if prog.origen in ("repo", "aur"):
         _restos_sistema(ficha, otros)
         _caches(ficha, home)
+    ignorados.aplicar(ficha.restos)  # 🙈 lo que el usuario pidió no ver más
     for i, h in enumerate(ficha.restos, 1):
         h.numero = i
     return ficha

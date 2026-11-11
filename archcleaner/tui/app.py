@@ -104,7 +104,8 @@ Checkbox { margin: 0 0 0 2; }
 .elegir-raiz #raices { height: auto; max-height: 8; margin-bottom: 1; border: round $primary 50%; }
 .elegir-raiz #raices:focus { border: round $primary; }
 .barra-explorar Button { min-width: 10; margin-right: 1; }
-.barra-explorar Button.oculto { display: none; }
+.botones Button.oculto { display: none; }
+.barra-seleccion Button { min-width: 8; margin-right: 1; }
 #aviso-ia { margin-top: 1; }
 
 /* ejecución */

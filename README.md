@@ -48,7 +48,7 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
-- **Código abierto y con tests:** 84 tests automáticos (las reglas de seguridad, y la app manejada
+- **Código abierto y con tests:** 96 tests automáticos (las reglas de seguridad, y la app manejada
   con clics en un home falso) corren en cada cambio.
 
 ## 📸 Capturas
@@ -82,7 +82,7 @@ python archcleaner/archcleaner.py
 ```
 
 Opcionales: `pacman-contrib` (limpiar la caché de pacman), `timeshift` (snapshots), `flatpak`,
-`ollama` (el botón 🤖 «¿Qué es esto?» de Explorar).
+`ollama` (el botón 🤖 «¿Qué es esto?»).
 
 **Desinstalar:** `sudo pacman -R archcleaner`. Sus datos (log, historial, preferencias) están en
 `~/.local/state/archcleaner/`: borrá esa carpeta si no los querés.
@@ -136,11 +136,21 @@ Carpetas y archivos de lo más pesado a lo más liviano, con lo que ArchCleaner 
 barrera de seguridad; fuera de tu home y de tus discos de datos es solo para mirar.
 
 **🤖 ¿Qué es esto? (opcional, IA local):** si tenés [Ollama](https://ollama.com) andando, aparece el
-botón 🤖 (o la tecla `?`): una IA que corre en tu PC explica qué es la carpeta, qué programa la usa y qué
+botón 🤖 (o la tecla `?`), en Explorar y en la lista para elegir qué limpiar: una IA que corre en tu PC
+explica qué es la carpeta, qué programa la usa y qué
 pasa si la borrás. Le llega la ruta, el peso, el paquete dueño y los nombres de lo que hay adentro, nunca
 el contenido de los archivos, y nada sale de tu PC. **Solo explica:** no cambia ninguna marca 🟢/🟡 ni
 borra nada, y si no reconoce la carpeta lo dice («No estoy seguro de qué es»). Modelo por defecto:
 `qwen3.5:9b` (`ollama pull qwen3.5:9b`, ~6 GB); se cambia con la variable `ARCHCLEANER_MODELO`.
+
+### 🙈 No mostrar más
+
+¿Algo que siempre aparece y no querés borrar (tus modelos de IA, una ISO que guardás…)? Elegilo en la
+lista para limpiar o en Explorar y apretá **🙈 No mostrar** (o `i`): deja de proponerse para borrar,
+junto con todo lo que tenga adentro, en este análisis y en los siguientes. No borra nada. Se vuelve a
+mostrar desde **🙈 Ocultos** en la lista para limpiar, o con **👁 Mostrar** en Explorar.
+Si algo oculto queda adentro de una limpieza que no se puede hacer a medias (vaciar una caché entera,
+`paccache`…), esa limpieza deja de proponerse y te avisa por qué.
 
 ## 🔍 Qué revisa
 
@@ -170,6 +180,7 @@ archcleaner/
   escaner.py      mide carpetas (como du)   ficha.py       investiga un programa (paquetes, restos)
   historial.py    fotos y «qué creció»      programas.py   programas instalados y su último uso
   ia.py           🤖 «¿Qué es esto?» (Ollama, opcional y de solo lectura)
+  ignorados.py    🙈 lo que no se propone más para borrar
   detectores/     un archivo por fuente de basura
   tui/            la app (textual): una pantalla por paso
 ```
