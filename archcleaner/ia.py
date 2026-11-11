@@ -168,16 +168,21 @@ def _mayuscula(texto: str) -> str:
 
 def preguntar(d: Datos, idioma: str) -> Respuesta:
     """Le pregunta al modelo (tarda unos segundos; más la primera vez, mientras lo carga). Lanza SinIA."""
+    return _interpretar(_chat(SISTEMA, ESQUEMA, mensaje(d, idioma), idioma), d)
+
+
+def _chat(sistema: str, esquema: dict, mensaje_: str, idioma: str) -> str:
+    """Manda el pedido a Ollama y devuelve el JSON crudo que escribió el modelo. Lanza SinIA."""
     nombre, trato = IDIOMA_MODELO.get(idioma, IDIOMA_MODELO["en"])
     cuerpo = {
         "model": modelo(),
         "stream": False,
         "think": False,  # respuesta corta, sin razonar en voz alta
         "messages": [
-            {"role": "system", "content": SISTEMA.format(idioma=nombre, trato=trato)},
-            {"role": "user", "content": mensaje(d, idioma)},
+            {"role": "system", "content": sistema.format(idioma=nombre, trato=trato)},
+            {"role": "user", "content": mensaje_},
         ],
-        "format": ESQUEMA,
+        "format": esquema,
         "options": {"temperature": 0.2},  # explicar, no crear: poca variación
     }
     try:
@@ -189,7 +194,7 @@ def preguntar(d: Datos, idioma: str) -> Respuesta:
         raise SinIA(tr("Ollama respondió con un error ({codigo}).", codigo=e.code)) from e
     except (OSError, ValueError) as e:
         raise SinIA(tr("No se pudo hablar con Ollama: {error}", error=e)) from e
-    return _interpretar(res.get("message", {}).get("content", ""), d)
+    return res.get("message", {}).get("content", "")
 
 
 def lineas(r: Respuesta, d: Datos) -> list[str]:
@@ -207,6 +212,125 @@ def lineas(r: Respuesta, d: Datos) -> list[str]:
         "settings": tr("Si se borra, perdés configuración."),
         "data": tr("Si se borra, perdés datos."),
         "package": tr("Es parte de un paquete: se quita desinstalándolo."),
+    }[r.efecto]
+    res.append(f"{efecto} {r.detalle}".strip())
+    return [x for x in res if x]
+
+
+# ── Programas (pantalla Desinstalar) ─────────────────────────────────────────
+# Lo mismo pero de un programa instalado. La IA solo explica: lo que ArchCleaner deja o no desinstalar
+# (🟢 🟡 🔴) sale de datos reales (pacman, grupos, protegidos), nunca de acá.
+
+EFECTOS_PROGRAMA = ("app", "feature", "system")
+
+SISTEMA_PROGRAMA = """You explain to a Linux user what an installed program or package is. You get its name, where it was installed from, its description, size, package groups and which other packages use it.
+
+Reply with JSON:
+- "known": true if you recognize this program or package, or the project it comes from. A name you have never heard of is not knowledge: an unfamiliar name means false, even if a description is given.
+- "what": one or two short sentences saying what it is and what it is used for. If "known" is false, only rephrase the description you were given, adding nothing; if there is no description, say that it is not clear what it does.
+- "if_removed": one of
+  "app" (a program or game that the user opens by themselves: removing it only loses that program),
+  "feature" (it adds something to other programs or to the desktop: plugins, drivers, codecs, fonts, themes, thumbnails, helper tools that other programs call),
+  "system" (a core piece of the system or the desktop: without it the desktop, the network, sound, graphics or booting may stop working).
+  If you hesitate, choose the more cautious one: "system" over "feature", "feature" over "app".
+- "detail": one short sentence about what stops working without it. The app already writes "if removed" before it: do not repeat it. Do not tell the user whether to remove it.
+
+Write "what" and "detail" in {idioma}{trato}. Never invent program names, features, websites or commands."""
+
+ESQUEMA_PROGRAMA = {
+    "type": "object",
+    "properties": {
+        "known": {"type": "boolean"},
+        "what": {"type": "string"},
+        "if_removed": {"type": "string", "enum": list(EFECTOS_PROGRAMA)},
+        "detail": {"type": "string"},
+    },
+    "required": ["known", "what", "if_removed", "detail"],
+}
+
+ORIGEN_MODELO = {
+    "repo": "Arch Linux official repositories (pacman)",
+    "aur": "AUR (Arch User Repository)",
+    "flatpak": "Flatpak",
+    "appimage": "AppImage file",
+    "steam": "Steam (game or tool)",  # hoy la pantalla no lo pregunta (ver programas.py)
+}
+
+
+@dataclass
+class DatosPrograma:
+    """Lo que se le cuenta al modelo de un programa instalado."""
+    nombre: str
+    id: str                      # paquete, id de Flatpak, archivo del AppImage o appid de Steam
+    origen: str                  # clave de programas.ORIGENES
+    peso: str                    # ya legible
+    version: str = ""
+    descripcion: str = ""
+    grupos: list[str] = field(default_factory=list)
+    requerido_por: list[str] = field(default_factory=list)
+    opcional_para: list[str] = field(default_factory=list)
+    uso: str = ""                # en inglés, para el modelo ("12 days ago", "not since it was installed")
+
+    @property
+    def busqueda(self) -> str:
+        """Qué se busca en internet: el paquete o el nombre (nunca rutas personales)."""
+        if self.origen in ("repo", "aur", "flatpak"):
+            return self.id
+        return self.nombre
+
+
+def _lista(nombres: list[str], maximo: int = 8) -> str:
+    return ", ".join(nombres[:maximo]) + (", …" if len(nombres) > maximo else "") or "none"
+
+
+def mensaje_programa(d: DatosPrograma, idioma: str) -> str:
+    """Los datos del programa en un formato fijo, en inglés (es para el modelo)."""
+    lineas = [f"Name: {d.nombre}"]
+    if d.id != d.nombre and d.origen != "appimage":
+        lineas.append(f"Package: {d.id}")
+    lineas += [
+        f"Installed from: {ORIGEN_MODELO.get(d.origen, d.origen)}",
+        f"Version: {d.version or 'unknown'}",
+        f"Description: {d.descripcion or 'none'}",
+        f"Size: {d.peso}",
+    ]
+    if d.origen in ("repo", "aur"):
+        lineas += [f"Package groups: {_lista(d.grupos)}",
+                   f"Required by: {_lista(d.requerido_por)}",
+                   f"Optional for: {_lista(d.opcional_para)}"]
+    if d.uso:
+        lineas.append(f"Last used: {d.uso}")
+    lineas.append(f"\nAnswer in {IDIOMA_MODELO.get(idioma, IDIOMA_MODELO['en'])[0]}.")
+    return "\n".join(lineas)
+
+
+def _interpretar_programa(crudo: str) -> Respuesta:
+    """JSON del modelo -> Respuesta (programa = ""), del lado prudente si algo no cierra."""
+    try:
+        j = json.loads(crudo)
+        r = Respuesta(bool(j["known"]), str(j["what"]).strip(), "", str(j["if_removed"]), str(j["detail"]).strip())
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        raise SinIA(tr("La IA respondió algo que no se entiende.")) from e
+    r.que, r.detalle = _mayuscula(r.que), _mayuscula(r.detalle)
+    if not r.conocido:
+        r.efecto, r.detalle = "unknown", ""  # sin saber qué es, no puede decir qué deja de andar
+    elif r.efecto not in EFECTOS_PROGRAMA:
+        r.efecto, r.detalle = "system", ""  # el detalle hablaba de otro efecto
+    return r
+
+
+def preguntar_programa(d: DatosPrograma, idioma: str) -> Respuesta:
+    """Como preguntar(), pero de un programa instalado. Lanza SinIA."""
+    return _interpretar_programa(_chat(SISTEMA_PROGRAMA, ESQUEMA_PROGRAMA, mensaje_programa(d, idioma), idioma))
+
+
+def lineas_programa(r: Respuesta) -> list[str]:
+    res = [r.que] if r.conocido else [tr("No estoy seguro de qué es."), r.que]
+    efecto = {
+        "app": tr("Si lo desinstalás, perdés ese programa."),
+        "feature": tr("Si lo desinstalás, otros programas o el escritorio pierden algo."),
+        "system": tr("Es una pieza del sistema: sin ella pueden dejar de andar cosas importantes."),
+        "unknown": tr("Sin saber qué es, no puedo decir qué deja de andar si lo desinstalás."),
     }[r.efecto]
     res.append(f"{efecto} {r.detalle}".strip())
     return [x for x in res if x]

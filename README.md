@@ -44,7 +44,9 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
   simbólicos se borran como enlaces, nunca lo que hay del otro lado, y nunca borra una carpeta
   que tenga un disco montado adentro.
 - **Los paquetes vitales están protegidos** (kernel, systemd, pacman, escritorio, drivers,
-  bootloader…): aparecen con 🔒 y no se pueden desinstalar desde acá.
+  bootloader…). En la lista de Desinstalar cada programa tiene su semáforo: 🟢 se puede, 🟡 no
+  recomendado (parte de tu escritorio, drivers y firmware, herramientas de Steam como Proton) y 🔴
+  ArchCleaner no lo desinstala (vital, o lo necesita otro paquete). Abajo se ve el motivo.
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
@@ -140,7 +142,8 @@ barrera de seguridad; fuera de tu home y de tus discos de datos es solo para mir
 **🤖 ¿Qué es esto? (opcional, IA local):** si tenés [Ollama](https://ollama.com) andando, aparece el
 botón 🤖 (o la tecla `?`), en Explorar y en la lista para elegir qué limpiar: una IA que corre en tu PC
 explica qué es la carpeta, qué programa la usa y qué
-pasa si la borrás. Le llega la ruta, el peso, el paquete dueño y los nombres de lo que hay adentro, nunca
+pasa si la borrás. En Desinstalar explica qué es cada programa o paquete y qué deja de andar sin él
+(con los juegos de Steam no: les inventa el argumento). Le llega la ruta, el peso, el paquete dueño y los nombres de lo que hay adentro, nunca
 el contenido de los archivos, y nada sale de tu PC. **Solo explica:** no cambia ninguna marca 🟢/🟡 ni
 borra nada, y si no reconoce la carpeta lo dice («No estoy seguro de qué es») y ofrece
 **🔎 Buscar en internet**: abre tu navegador con una búsqueda del nombre (solo el nombre, nunca la ruta). Modelo por defecto:

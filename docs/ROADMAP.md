@@ -4,10 +4,13 @@
 - **v0.11.0 lista pero sin publicar: Luciano la está probando** con sus datos reales.
   Novedades: 🤖 «¿Qué es esto?» (IA local opcional, `ia.py` + `tui/que_es.py`, en Explorar y en la lista
   para limpiar; si duda, 🔎 Buscar en internet), 🙈 «No mostrar más» (`ignorados.py` + `tui/ocultos.py`,
-  por ruta, guardado en estado.json) y clic que elige sin tildar ([ ] o espacio tilda). 101 tests.
+  por ruta, guardado en estado.json) y clic que elige sin tildar ([ ] o espacio tilda).
+  Después (2026-11-11): en Desinstalar, semáforo 🟢🟡🔴 por programa (`ficha.semaforo`, con el motivo abajo)
+  y 🤖 «¿Qué es?» de programas (prompt propio; Steam excluido); los restos le dicen a la IA de qué programa son. 113 tests.
 - **Próximo paso:** juntar lo que no convenza al usarlo (con capturas). Cuando diga "publicá la 0.11":
   regenerar capturas (`python docs/generar_capturas.py`, que muestren 🤖 y 🙈) → pasos de "Publicar una versión".
-- Pendiente fuera de este repo: anotar en `ias-locales` (Decisiones, tarea 11) el prompt nuevo de "known".
+- Pendiente fuera de este repo: anotar en `ias-locales` (Decisiones, tarea 11) el prompt nuevo de "known"
+  y el de programas (validado con un script suelto; convendría sumarlo como `pruebas/que_es_programa.py`).
 - v0.10.1 publicada en GitHub. **Bloqueado: subir al AUR** (registro de cuentas cerrado por bots). Pasos abajo.
 
 ---

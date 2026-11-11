@@ -16,7 +16,7 @@ from .detectores.steam import _tiene_partidas
 from . import ignorados
 from .escaner import escanear
 from .modelo import Hallazgo, Item, Limpieza, Modo, Nivel, items_ordenados
-from .programas import Programa
+from .programas import HERRAMIENTAS_STEAM, Programa
 from .util import ejecutar, leer_vdf
 from .i18n import tr
 
@@ -50,6 +50,36 @@ CRITICOS_ETC = {
     "group", "gshadow", "sudoers", "crypttab", "mkinitcpio.conf", "resolv.conf", "hosts", "adjtime",
     "os-release", "pacman.conf", "pacman.d", "systemd", "ssl", "ca-certificates", "X11", "default",
 }
+
+# 🟡 "No recomendado" en la lista de Desinstalar: se puede, pero rompe algo que se usa todos los días.
+GRUPOS_ESCRITORIO = {"plasma", "gnome", "xfce4", "mate", "cinnamon", "lxqt", "budgie", "deepin"}
+PREFIJOS_DRIVERS = ("mesa", "lib32-mesa", "vulkan-", "lib32-vulkan-", "xf86-video-", "amdvlk", "lib32-amdvlk",
+                    "libva-", "lib32-libva-", "nvidia", "lib32-nvidia", "linux-firmware")
+
+
+def semaforo(prog: Programa) -> tuple[str, str]:
+    """🟢 🟡 🔴 de un programa en la lista de Desinstalar, con el motivo (vacío si es 🟢).
+    🔴 = ArchCleaner no lo desinstala (la ficha lo bloquea). 🟡 = se puede, pero no conviene.
+    Sale de datos reales (pacman y la lista de protegidos), nunca de la IA."""
+    pacman = prog.origen in ("repo", "aur")
+    if pacman and prog.id in PROTEGIDOS:
+        return "rojo", tr("Vital para el sistema: ArchCleaner nunca lo desinstala.")
+    if pacman and prog.requerido_por:
+        return "rojo", tr("Lo necesitan otros paquetes ({paquetes}): primero habría que desinstalar esos.",
+                          paquetes=_resumen(prog.requerido_por))
+    if pacman and (escritorio := sorted(set(prog.grupos) & GRUPOS_ESCRITORIO)):
+        return "amarillo", tr("Es parte de tu escritorio ({grupo}): sin él puede faltar o fallar algo.",
+                              grupo=escritorio[0])
+    if pacman and ("xorg-drivers" in prog.grupos or prog.id.startswith(PREFIJOS_DRIVERS)
+                   or prog.id.endswith("-firmware")):
+        return "amarillo", tr("Driver o firmware: sin él puede fallar el video, el sonido o algún dispositivo.")
+    if prog.origen == "steam" and prog.nombre.startswith(HERRAMIENTAS_STEAM):
+        return "amarillo", tr("Herramienta de Steam: tus juegos la usan para arrancar.")
+    return "verde", ""
+
+
+def _resumen(nombres: list[str], maximo: int = 4) -> str:
+    return ", ".join(nombres[:maximo]) + (tr(" y {n} más", n=len(nombres) - maximo) if len(nombres) > maximo else "")
 
 
 @dataclass
@@ -90,6 +120,9 @@ def normalizar(nombre: str) -> str:
 def investigar(prog: Programa, home: Path | None = None) -> Ficha:
     home = home or Path.home()
     ficha = Ficha(prog)
+    color, motivo = semaforo(prog)
+    if color == "amarillo":
+        ficha.avisos.append(tr("No recomendado. {motivo}", motivo=motivo))
     if prog.origen in ("repo", "aur"):
         _pacman(ficha)
     elif prog.origen == "flatpak":

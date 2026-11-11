@@ -1,10 +1,15 @@
-"""Pantalla para elegir qué programa desinstalar, con buscador. No toca nada (clic o enter elige)."""
+"""Pantalla para elegir qué programa desinstalar, con buscador. No toca nada (clic o enter elige).
+
+Cada programa lleva su semáforo (ficha.semaforo): 🟢 se puede · 🟡 no recomendado · 🔴 ArchCleaner no lo
+desinstala. Abajo, el motivo del resaltado. ? o el botón = 🤖 qué es (IA local, si hay Ollama; solo explica)."""
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
@@ -13,10 +18,12 @@ from textual.widgets import Button, Input, OptionList, Static
 from textual.widgets.option_list import Option
 
 from ..estado import leer, guardar_preferencia
-from ..ficha import PROTEGIDOS
+from .. import ia
+from ..ficha import semaforo
 from ..programas import ORDENES, Programa, hace, ordenar
 from ..util import acortar, humano
 from .comunes import ESPACIO, barra_botones
+from .que_es import QueEsEsto, datos_de_programa
 from ..i18n import tr
 
 
@@ -28,6 +35,7 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
         Binding("f5", "actualizar", tr("Actualizar"), priority=True),
         Binding("f2", "siguiente_orden", tr("Ordenar"), priority=True),
         Binding("down", "a_lista", show=False),
+        Binding("question_mark", "que_es", tr("¿Qué es esto? (IA local)")),  # en el buscador, ? se escribe
     ]
 
     def __init__(self, programas: list[Programa], busqueda: str = ""):
@@ -35,6 +43,8 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
         self.programas = programas
         self.busqueda_inicial = busqueda
         self.visibles: list[Programa] = []
+        self.semaforos = {id(p): semaforo(p) for p in programas}
+        self.con_ia = False
         orden = leer().get("preferencias", {}).get("orden_programas", "tamano")
         self.orden = orden if orden in ORDENES else "tamano"
 
@@ -49,13 +59,56 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
                         id="buscar")
             yield Static(id="orden", classes="orden")
             yield OptionList(id="lista", classes="lista")
-        yield barra_botones([("elegir", tr("Ver ficha ▸"), "primary"), ESPACIO,
+            yield Static(id="motivo", classes="motivo")
+        yield barra_botones([("elegir", tr("Ver ficha ▸"), "primary"), ("que_es", tr("🤖 ¿Qué es?"), "default"), ESPACIO,
                              ("actualizar", tr("🔄 Actualizar"), "default"), ("cancelar", tr("Cancelar"), "default")])
 
     def on_mount(self) -> None:
         self._dibujar_orden()
+        self.query_one("#que_es", Button).add_class("oculto")
         self._filtrar(self.busqueda_inicial)
         self.query_one(Input).focus()
+        self._buscar_ia()
+
+    @work
+    async def _buscar_ia(self) -> None:
+        """El botón 🤖 aparece solo si hay un Ollama respondiendo."""
+        if await asyncio.to_thread(ia.disponible):
+            self.con_ia = True
+            self.query_one("#que_es", Button).remove_class("oculto")
+            self.refresh_bindings()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        return self.con_ia if action == "que_es" else True
+
+    def _resaltado(self) -> Programa | None:
+        lista = self.query_one(OptionList)
+        return self.visibles[lista.highlighted] if self.visibles and lista.highlighted is not None else None
+
+    def action_que_es(self) -> None:
+        if not self.con_ia or not (p := self._resaltado()):
+            return
+        if p.origen == "steam":  # sin descripción, la IA les inventa el argumento; y el juego ya lo conocés
+            self.notify(tr("Con juegos de Steam la IA inventa demasiado: buscalo en la tienda de Steam."))
+            return
+        self.app.push_screen(QueEsEsto(datos_de_programa(p)))
+
+    def on_option_list_option_highlighted(self, ev: OptionList.OptionHighlighted) -> None:
+        self._mostrar_motivo()
+
+    def _mostrar_motivo(self) -> None:
+        p = self._resaltado()
+        motivo = self.query_one("#motivo", Static)
+        if p is None:
+            motivo.update("")
+            return
+        color, texto = self.semaforos[id(p)]
+        if color == "verde":
+            motivo.update(Text.assemble(("🟢 " + tr("Se puede desinstalar: antes vas a ver la ficha."), "green"),
+                                        ("   ·   🟡 " + tr("no recomendado") + "   ·   🔴 "
+                                         + tr("ArchCleaner no lo desinstala"), "dim")))
+        else:
+            motivo.update(Text(f"{ICONOS[color]} {texto}", style="yellow" if color == "amarillo" else "red"))
 
     # ── orden ──
 
@@ -96,6 +149,9 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
             self.dismiss(self.visibles[0])
 
     def on_button_pressed(self, ev: Button.Pressed) -> None:
+        if ev.button.id == "que_es":
+            self.action_que_es()
+            return
         if ev.button.id in ("cancelar", "actualizar"):
             self.dismiss(None if ev.button.id == "cancelar" else "actualizar")
             return
@@ -113,16 +169,17 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
         lista.set_options([Option(self._fila(p, ancho_desc), id=str(i)) for i, p in enumerate(self.visibles)])
         if self.visibles:
             lista.highlighted = 0
+        self._mostrar_motivo()
 
-    @staticmethod
-    def _fila(p: Programa, ancho_desc: int) -> Text:
+    def _fila(self, p: Programa, ancho_desc: int) -> Text:
         origen, color = p.etiqueta_origen
+        semaforo_ = self.semaforos[id(p)][0]
         fila = Text.assemble(
             (f"{humano(p.peso):>9}  ", "bold"),
             _celda_uso(p), "  ",
             (f" {origen:^8} ", f"bold {color} reverse"), "  ",
-            ("🔒 " if p.origen in ("repo", "aur") and p.id in PROTEGIDOS else "   ", ""),
-            (acortar(p.nombre, 32).ljust(32), "dim" if p.id in PROTEGIDOS else "bold"), "  ",
+            (ICONOS[semaforo_] + " ", ""),
+            (acortar(p.nombre, 32).ljust(32), "dim" if semaforo_ == "rojo" else "bold"), "  ",
             (p.descripcion if len(p.descripcion) <= ancho_desc else p.descripcion[: ancho_desc - 1] + "…", "grey62"),
         )
         return fila
@@ -142,6 +199,9 @@ class ElegirProgramaScreen(Screen[Programa | str | None]):
 
     def action_atras(self) -> None:
         self.dismiss(None)
+
+
+ICONOS = {"verde": "🟢", "amarillo": "🟡", "rojo": "🔴"}
 
 
 def _celda_uso(p: Programa) -> tuple[str, str]:

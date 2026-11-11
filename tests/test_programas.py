@@ -96,5 +96,80 @@ class TestOrden(unittest.TestCase):
         self.assertEqual(hace(ahora - 800 * DIA, ahora), "hace 2 años")
 
 
+
+QEI = """Name            : plasma-pa
+Version         : 6.5.0-1
+Description     : Plasma applet for audio volume management using PulseAudio
+Groups          : plasma
+Required By     : None
+Optional For    : plasma-desktop
+Installed Size  : 1024.00 KiB
+Install Date    : Mon 03 Nov 2026 10:00:00 AM -03
+
+Name            : qt6-base
+Version         : 6.10.0-1
+Description     : A cross-platform application and UI framework
+Groups          : None
+Required By     : ark  dolphin  kate
+Optional For    : None
+Installed Size  : 70.00 MiB
+Install Date    : Mon 03 Nov 2026 10:00:00 AM -03
+
+"""
+
+
+class TestPacman(unittest.TestCase):
+    def test_lee_grupos_requeridos_y_opcionales(self):
+        def ejecutar(cmd, timeout=120):
+            return QEI if cmd[:2] == ["pacman", "-Qei"] else ""
+        with mock.patch.object(programas, "ejecutar", side_effect=ejecutar):
+            leidos = {p.id: p for p in programas._pacman([])}
+        self.assertEqual(leidos["plasma-pa"].grupos, ["plasma"])
+        self.assertEqual(leidos["plasma-pa"].requerido_por, [])
+        self.assertEqual(leidos["plasma-pa"].opcional_para, ["plasma-desktop"])
+        self.assertEqual(leidos["qt6-base"].grupos, [])
+        self.assertEqual(leidos["qt6-base"].requerido_por, ["ark", "dolphin", "kate"])
+
+
+class TestSemaforo(unittest.TestCase):
+    """🟢 🟡 🔴 de la lista de Desinstalar: sale de datos reales, no de la IA."""
+
+    @staticmethod
+    def color(id_: str, origen: str = "repo", **extra) -> str:
+        from archcleaner.ficha import semaforo
+        return semaforo(Programa(id_, extra.pop("nombre", id_), origen, 1, **extra))[0]
+
+    def test_rojo_si_es_vital_o_lo_necesitan_otros(self):
+        self.assertEqual(self.color("systemd"), "rojo")
+        self.assertEqual(self.color("qt6-base", requerido_por=["dolphin"]), "rojo")
+        self.assertEqual(self.color("linux", "aur"), "rojo")
+
+    def test_amarillo_escritorio_drivers_y_herramientas_de_steam(self):
+        self.assertEqual(self.color("plasma-pa", grupos=["plasma"]), "amarillo")
+        self.assertEqual(self.color("vulkan-radeon"), "amarillo")
+        self.assertEqual(self.color("xf86-video-amdgpu", grupos=["xorg-drivers"]), "amarillo")
+        self.assertEqual(self.color("sof-firmware"), "amarillo")
+        self.assertEqual(self.color("1493710", "steam", nombre="Proton Experimental"), "amarillo")
+
+    def test_verde_lo_demas(self):
+        self.assertEqual(self.color("gimp"), "verde")
+        self.assertEqual(self.color("unrar", opcional_para=["ark"]), "verde")  # opcional: la ficha avisa
+        self.assertEqual(self.color("kate", grupos=["kde-applications"]), "verde")
+        self.assertEqual(self.color("org.gimp.GIMP", "flatpak"), "verde")
+        self.assertEqual(self.color("570", "steam", nombre="Dota 2"), "verde")
+
+    def test_un_flatpak_no_es_vital_aunque_se_llame_igual(self):
+        self.assertEqual(self.color("systemd", "flatpak"), "verde")
+
+    def test_la_ficha_avisa_si_no_es_recomendado(self):
+        from archcleaner import ficha
+        prog = Programa("/tmp/no-existe/Algo.AppImage", "Algo", "appimage", 1)
+        with mock.patch.object(ficha, "semaforo", return_value=("amarillo", "Motivo de prueba.")), \
+                mock.patch.object(ficha, "_appimage"), mock.patch.object(ficha, "_restos_home"), \
+                tempfile.TemporaryDirectory() as home:
+            f = ficha.investigar(prog, Path(home))
+        self.assertIn("No recomendado. Motivo de prueba.", f.avisos)
+
+
 if __name__ == "__main__":
     unittest.main()

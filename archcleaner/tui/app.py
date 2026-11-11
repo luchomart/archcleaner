@@ -55,6 +55,7 @@ Screen { background: $surface; }
 #buscar:focus { border: round $primary; }
 #lista { margin: 0 1; }
 .orden { height: 1; margin: 1 2 0 2; }
+.motivo { height: 1; margin: 0 2; }
 
 /* menú */
 MenuScreen { align: center top; }
@@ -338,7 +339,8 @@ class ArchCleanerApp(App[None]):
 
             elif paso == "restos":
                 s = await self.push_screen_wait(SeleccionScreen(
-                    ficha.restos, tr("📦 {nombre}: ¿qué restos borro?", nombre=prog.nombre), SECCIONES, previa=sel))
+                    ficha.restos, tr("📦 {nombre}: ¿qué restos borro?", nombre=prog.nombre), SECCIONES, previa=sel,
+                    contexto=f"possible leftovers of «{prog.nombre}» ({prog.id}), a program being uninstalled"))
                 if s == "actualizar":
                     paso, ficha, sel = "ficha", None, None
                     continue

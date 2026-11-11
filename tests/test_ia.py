@@ -22,6 +22,7 @@ os.environ["ARCHCLEANER_LANG"] = "es"
 from test_tui import TAMANO, BaseTUI
 
 from archcleaner import ia
+from archcleaner.programas import Programa
 from archcleaner.tui.app import ArchCleanerApp
 
 
@@ -169,6 +170,44 @@ class TestContextoYBusqueda(unittest.TestCase):
         self.assertNotIn("secreto", url)
 
 
+
+CHROME = ia.DatosPrograma("google-chrome", "google-chrome", "aur", "380 MB", "142.0-1", "The popular web browser",
+                          opcional_para=["kdialog"], uso="3 days ago")
+
+
+class TestProgramas(ConOllama):
+    def test_manda_los_datos_del_paquete(self):
+        OllamaFalso.respuesta = {"known": True, "what": "navegador web.", "if_removed": "app", "detail": ""}
+        r = ia.preguntar_programa(CHROME, "es")
+        self.assertEqual((r.conocido, r.que, r.efecto), (True, "Navegador web.", "app"))
+        p = OllamaFalso.pedidos[0]
+        self.assertEqual(p["format"], ia.ESQUEMA_PROGRAMA)
+        self.assertIn("installed program or package", p["messages"][0]["content"])
+        usuario = p["messages"][1]["content"]
+        for esperado in ("Name: google-chrome", "Installed from: AUR", "Description: The popular web browser",
+                         "Required by: none", "Optional for: kdialog", "Last used: 3 days ago", "Answer in Spanish."):
+            self.assertIn(esperado, usuario)
+
+    def test_si_no_lo_conoce_no_dice_que_deja_de_andar(self):
+        OllamaFalso.respuesta = {"known": False, "what": "Un servicio.", "if_removed": "app",
+                                 "detail": "No pasa nada."}
+        r = ia.preguntar_programa(CHROME, "es")
+        self.assertEqual((r.efecto, r.detalle), ("unknown", ""))
+        self.assertEqual(ia.lineas_programa(r), ["No estoy seguro de qué es.", "Un servicio.",
+                                                 "Sin saber qué es, no puedo decir qué deja de andar si lo desinstalás."])
+
+    def test_efecto_raro_es_del_sistema(self):
+        OllamaFalso.respuesta = {"known": True, "what": "Algo.", "if_removed": "nada", "detail": "Detalle viejo."}
+        r = ia.preguntar_programa(CHROME, "es")
+        self.assertEqual((r.efecto, r.detalle), ("system", ""))
+
+    def test_busqueda_por_paquete_o_por_nombre(self):
+        self.assertEqual(CHROME.busqueda, "google-chrome")
+        appimage = ia.DatosPrograma("Zzprueba", "/home/alguien/Descargas/Zzprueba.AppImage", "appimage", "1 MB")
+        self.assertEqual(appimage.busqueda, "Zzprueba")
+        self.assertNotIn("alguien", ia.mensaje_programa(appimage, "es"))
+
+
 class TestSinOllama(unittest.TestCase):
     def test_no_disponible(self):
         with mock.patch.dict(os.environ, {"OLLAMA_HOST": "127.0.0.1:9"}):  # puerto 9: nadie escucha
@@ -228,6 +267,46 @@ class TestPantalla(BaseTUI):
         url = abrir.call_args.args[0]
         self.assertIn("duckduckgo.com", url)
         self.assertNotIn(str(self.home.name), url)
+
+
+
+class TestPantallaProgramas(BaseTUI):
+    def _programas(self) -> list[Programa]:
+        return [Programa("zzpaquete", "zzpaquete", "repo", 2048, "paquete de prueba", requerido_por=["otro"]),
+                Programa("123", "Zzjuego", "steam", 1024)]
+
+    async def test_semaforo_motivo_y_que_es(self):
+        app = ArchCleanerApp(inicio="desinstalar")
+        r = ia.Respuesta(True, "Un paquete de prueba.", "", "feature", "Algo deja de andar.")
+        with mock.patch.object(ia, "disponible", return_value=True), \
+                mock.patch.object(ia, "preguntar_programa", return_value=r) as preguntar:
+            async with app.run_test(size=TAMANO) as pilot:
+                await self.esperar(app, "ElegirProgramaScreen")
+                motivo = str(app.screen.query_one("#motivo").render())
+                self.assertIn("🔴 Lo necesitan otros paquetes (otro)", motivo)
+                self.assertTrue(await self.esperar_que(lambda: app.screen.query_one("#que_es").display))
+                await pilot.click("#que_es")
+                await self.esperar(app, "QueEsEsto")
+                self.assertTrue(await self.esperar_que(lambda: not app.screen.query_one("#pensando").display))
+                texto = str(app.screen.query_one("#respuesta").render())
+                self.assertIn("Si lo desinstalás, otros programas o el escritorio pierden algo. Algo deja de andar.", texto)
+                self.assertEqual(preguntar.call_args.args[0].requerido_por, ["otro"])
+                await pilot.press("escape")
+                await self.esperar(app, "ElegirProgramaScreen")
+                # un juego de Steam no se le pregunta (le inventa el argumento)
+                app.screen.query_one("#lista").highlighted = 1
+                await pilot.click("#que_es")
+                await pilot.pause()
+                self.assertEqual(type(app.screen).__name__, "ElegirProgramaScreen")
+                self.assertEqual(preguntar.call_count, 1)
+
+    async def test_sin_ollama_no_hay_boton(self):
+        app = ArchCleanerApp(inicio="desinstalar")
+        with mock.patch.object(ia, "disponible", return_value=False):
+            async with app.run_test(size=TAMANO) as pilot:
+                await self.esperar(app, "ElegirProgramaScreen")
+                await pilot.pause()
+                self.assertFalse(app.screen.query_one("#que_es").display)
 
 
 if __name__ == "__main__":

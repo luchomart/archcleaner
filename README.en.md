@@ -55,7 +55,10 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
   - a folder with a mounted drive inside it.
 - **Symlinks are deleted as links**, never what they point to.
 - **Vital packages are protected.** The kernel, systemd, pacman, your desktop, drivers, the bootloader
-  and similar packages are marked 🔒 and can't be uninstalled from ArchCleaner.
+  and similar packages can't be uninstalled from ArchCleaner. In the Uninstall list every program gets a
+  traffic light: 🟢 fine to remove, 🟡 not recommended (part of your desktop, drivers and firmware, Steam
+  tools like Proton) and 🔴 ArchCleaner won't uninstall it (vital, or another package needs it). The reason
+  is shown below the list.
 - **Anything that looks like game saves** (folders such as `saves` or `worlds`) is never pre-selected.
 - **It can create a Timeshift snapshot** before uninstalling, so you can roll back if something goes wrong.
 - **Everything is logged** in `~/.local/state/archcleaner/acciones.log`.
@@ -173,8 +176,9 @@ safety check. Outside your home folder and your data drives, Explore is read-onl
 
 **🤖 What is this? (optional, local AI):** if [Ollama](https://ollama.com) is running, Explore and the
 list where you pick what to clean show a 🤖 button (or press `?`). An AI running on your own PC explains what the folder is, which program uses
-it and what happens if you delete it. It only gets the path, the size, the owning package and the names
-of what is inside. It never sees file contents, and nothing leaves your PC.
+it and what happens if you delete it. In Uninstall it explains what each program or package is and what
+stops working without it (except Steam games: it makes up their plot). It only gets the path, the size,
+the owning package and the names of what is inside (for programs: name, description and pacman data). It never sees file contents, and nothing leaves your PC.
 
 The AI only explains. It never changes a 🟢/🟡 mark and it can't delete anything. If it doesn't
 recognize a folder, it says so ("I'm not sure what this is") and offers **🔎 Search the web**, which

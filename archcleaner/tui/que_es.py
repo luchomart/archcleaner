@@ -1,4 +1,5 @@
-"""🤖 La ventana "¿Qué es esto?" (IA local). La usan Explorar y la pantalla para elegir qué limpiar."""
+"""🤖 La ventana "¿Qué es esto?" (IA local). La usan Explorar, la pantalla para elegir qué limpiar y la lista
+de programas para desinstalar."""
 
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import asyncio
 import os
 import stat
 import subprocess
+import time
 import urllib.parse
 from collections.abc import Callable
 from pathlib import Path
@@ -20,6 +22,7 @@ from textual.widgets import Button, LoadingIndicator, Static
 
 from .. import i18n, ia
 from ..i18n import tr
+from ..programas import Programa
 from ..util import ejecutar as correr
 from ..util import humano
 
@@ -35,15 +38,18 @@ class QueEsEsto(ModalScreen[None]):
 
     BINDINGS = [Binding("escape", "cerrar", tr("Cerrar"))]
 
-    def __init__(self, datos: ia.Datos):
+    def __init__(self, datos: ia.Datos | ia.DatosPrograma):
         super().__init__()
         self.datos = datos
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="dialogo"):
             yield Static(Text(tr("🤖 ¿Qué es esto?"), style="bold"), classes="dialogo-titulo")
-            yield Static(Text.assemble(("📁 " if self.datos.carpeta else "📄 ", ""), (self.datos.ruta, "bold"),
-                                       (f"  ({self.datos.peso})", "dim")))
+            d = self.datos
+            if isinstance(d, ia.DatosPrograma):
+                yield Static(Text.assemble("📦 ", (d.nombre, "bold"), (f"  ({d.peso})", "dim")))
+            else:
+                yield Static(Text.assemble(("📁 " if d.carpeta else "📄 ", ""), (d.ruta, "bold"), (f"  ({d.peso})", "dim")))
             yield LoadingIndicator(id="pensando")
             yield Static(Text(tr("La primera vez tarda más: Ollama carga el modelo."), style="dim"), id="primera")
             with VerticalScroll(classes="dialogo-cuerpo"):
@@ -64,8 +70,14 @@ class QueEsEsto(ModalScreen[None]):
     async def _preguntar(self) -> None:
         respuesta = self.query_one("#respuesta", Static)
         try:
-            r = await asyncio.to_thread(ia.preguntar, self.datos, i18n.idioma)
-            texto = Text("\n").join(Text(x) for x in ia.lineas(r, self.datos))
+            d = self.datos
+            if isinstance(d, ia.DatosPrograma):
+                r = await asyncio.to_thread(ia.preguntar_programa, d, i18n.idioma)
+                lineas = ia.lineas_programa(r)
+            else:
+                r = await asyncio.to_thread(ia.preguntar, d, i18n.idioma)
+                lineas = ia.lineas(r, d)
+            texto = Text("\n").join(Text(x) for x in lineas)
             duda = not r.conocido
         except ia.SinIA as e:
             texto, duda = Text(str(e), style="yellow"), False
@@ -78,7 +90,8 @@ class QueEsEsto(ModalScreen[None]):
 
     def on_button_pressed(self, ev: Button.Pressed) -> None:
         if ev.button.id == "buscar":
-            abrir_navegador(url_busqueda(self.datos.ruta))
+            d = self.datos
+            abrir_navegador(url_busqueda(d.busqueda if isinstance(d, ia.DatosPrograma) else d.ruta))
             self.notify(tr("Abriendo el navegador…"))
             return
         self.dismiss(None)
@@ -120,3 +133,16 @@ def datos_de(ruta: str | Path, peso: int | None, peso_carpeta: Callable[[str], i
         adentro = [(nombre, humano(p)) for nombre, p in filas[:ia.MAX_ADENTRO]]
     return ia.Datos(ruta.replace(str(Path.home()), "~", 1), carpeta, humano(peso), paquetes_dueños(ruta), adentro,
                     contexto)
+
+
+def datos_de_programa(p: Programa) -> ia.DatosPrograma:
+    """Arma lo que se le cuenta a la IA de un programa de la lista de Desinstalar."""
+    if p.ultimo_uso:
+        dias = int((time.time() - p.ultimo_uso) // 86400)
+        uso = "today" if dias < 1 else f"{dias} days ago"
+    elif p.uso_conocido:
+        uso = "not since it was installed or updated"
+    else:
+        uso = ""
+    return ia.DatosPrograma(p.nombre, p.id, p.origen, humano(p.peso), p.version, p.descripcion, p.grupos,
+                            p.requerido_por, p.opcional_para, uso)

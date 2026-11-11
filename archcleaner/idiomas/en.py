@@ -711,4 +711,28 @@ TEXTOS: dict[str, str] = {
     "elegir": "pick",
     "[ ] o espacio: ": "[ ] or space: ",
     "tildar": "select",
+
+    # ── Desinstalar: semáforo y 🤖 de programas ──
+    "Si lo desinstalás, perdés ese programa.": "If you uninstall it, you lose that program.",
+    "Si lo desinstalás, otros programas o el escritorio pierden algo.":
+        "If you uninstall it, other programs or the desktop lose something.",
+    "Es una pieza del sistema: sin ella pueden dejar de andar cosas importantes.":
+        "It's a core piece of the system: without it, important things may stop working.",
+    "Vital para el sistema: ArchCleaner nunca lo desinstala.": "Vital for the system: ArchCleaner never uninstalls it.",
+    "Lo necesitan otros paquetes ({paquetes}): primero habría que desinstalar esos.":
+        "Other packages need it ({paquetes}): those would have to be uninstalled first.",
+    "Es parte de tu escritorio ({grupo}): sin él puede faltar o fallar algo.":
+        "It's part of your desktop ({grupo}): without it, something may be missing or break.",
+    "Driver o firmware: sin él puede fallar el video, el sonido o algún dispositivo.":
+        "Driver or firmware: without it, graphics, sound or some device may fail.",
+    "Herramienta de Steam: tus juegos la usan para arrancar.": "Steam tool: your games use it to start.",
+    " y {n} más": " and {n} more",
+    "No recomendado. {motivo}": "Not recommended. {motivo}",
+    "Se puede desinstalar: antes vas a ver la ficha.": "Can be uninstalled: you'll see the details first.",
+    "no recomendado": "not recommended",
+    "ArchCleaner no lo desinstala": "ArchCleaner won't uninstall it",
+    "Sin saber qué es, no puedo decir qué deja de andar si lo desinstalás.":
+        "Without knowing what it is, I can't say what stops working if you uninstall it.",
+    "Con juegos de Steam la IA inventa demasiado: buscalo en la tienda de Steam.":
+        "The AI makes up too much about Steam games: look it up in the Steam store.",
 }

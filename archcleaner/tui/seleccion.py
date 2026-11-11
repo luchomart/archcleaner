@@ -76,9 +76,11 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
     ]
 
     def __init__(self, hallazgos: list[Hallazgo], titulo: str = tr("🧹 Elegí qué limpiar"),
-                 secciones: dict[Nivel, str] | None = None, previa: Seleccion | None = None):
+                 secciones: dict[Nivel, str] | None = None, previa: Seleccion | None = None, contexto: str = ""):
+        """`contexto`: para la IA, qué es esta lista (ej. "restos del programa X"); en inglés, no se muestra."""
         super().__init__()
         self.titulo = titulo
+        self.contexto = contexto
         self.secciones = secciones or {n: n.nombre for n in Nivel}
         self.origen = hallazgos  # la lista del análisis: al ocultar algo se corrige ahí también
         self.hallazgos = [h for h in hallazgos if h.limpieza]
@@ -313,6 +315,8 @@ class SeleccionScreen(Screen[Seleccion | str | None]):
             return
         h = fila.hallazgo
         contexto = f"{h.titulo}: {h.explicacion}"  # lo que ArchCleaner ya sabe del grupo: ayuda a la IA
+        if self.contexto:
+            contexto += f" ({self.contexto})"
         self.app.push_screen(QueEsEsto(datos_de(rutas[0], peso, self._peso_carpeta, contexto)))
 
     @work

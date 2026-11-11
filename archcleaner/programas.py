@@ -48,6 +48,9 @@ class Programa:
     ultimo_uso: float | None = None   # cuándo se usó por última vez (si se sabe)
     instalado: float | None = None    # cuándo se instaló o actualizó por última vez
     uso_conocido: bool = False        # True = se puede saber si se usó (ultimo_uso None = no se usó)
+    grupos: list[str] = field(default_factory=list)          # pacman: grupos del paquete (plasma, xorg-drivers…)
+    requerido_por: list[str] = field(default_factory=list)   # pacman: paquetes que lo necesitan
+    opcional_para: list[str] = field(default_factory=list)   # pacman: paquetes que lo usan si está
 
     @property
     def etiqueta_origen(self) -> tuple[str, str]:
@@ -149,7 +152,10 @@ def _pacman(ignorar: Horarios) -> list[Programa]:
                 res.append(Programa(n, n, "aur" if n in aur else "repo",
                                     parsear_tamano(actual.get("Installed Size", "")),
                                     actual.get("Description", "").replace("None", ""), actual.get("Version", ""),
-                                    instalado=_fecha_pacman(actual.get("Install Date", ""))))
+                                    instalado=_fecha_pacman(actual.get("Install Date", "")),
+                                    grupos=_nombres(actual.get("Groups", "")),
+                                    requerido_por=_nombres(actual.get("Required By", "")),
+                                    opcional_para=_nombres(actual.get("Optional For", ""))))
             actual = {}
         elif " : " in linea and not linea.startswith(" "):
             clave, valor = linea.split(" : ", 1)
@@ -167,6 +173,11 @@ def _pacman(ignorar: Horarios) -> list[Programa]:
     for p in res:
         _uso_por_atime(p, ejecutables.get(p.id, [])[:200], ignorar)
     return res
+
+
+def _nombres(valor: str) -> list[str]:
+    """Un campo de pacman -Qi con varios nombres ("a  b  c" o "None") -> lista."""
+    return [] if valor.strip() == "None" else valor.split()
 
 
 def _flatpak() -> list[Programa]:
