@@ -48,7 +48,7 @@ Un programa que borra cosas tiene que ganarse la confianza. Así trabaja ArchCle
 - **Lo que tiene pinta de partidas guardadas** (`saves`, `worlds`…) nunca viene tildado.
 - **Puede crear una snapshot de Timeshift** antes de desinstalar, para volver atrás si algo sale mal.
 - **Todo queda anotado** en `~/.local/state/archcleaner/acciones.log`.
-- **Código abierto y con tests:** 71 tests automáticos (las reglas de seguridad, y la app manejada
+- **Código abierto y con tests:** 84 tests automáticos (las reglas de seguridad, y la app manejada
   con clics en un home falso) corren en cada cambio.
 
 ## 📸 Capturas
@@ -81,7 +81,8 @@ git clone https://github.com/luchomart/archcleaner.git
 python archcleaner/archcleaner.py
 ```
 
-Opcionales: `pacman-contrib` (limpiar la caché de pacman), `timeshift` (snapshots), `flatpak`.
+Opcionales: `pacman-contrib` (limpiar la caché de pacman), `timeshift` (snapshots), `flatpak`,
+`ollama` (el botón 🤖 «¿Qué es esto?» de Explorar).
 
 **Desinstalar:** `sudo pacman -R archcleaner`. Sus datos (log, historial, preferencias) están en
 `~/.local/state/archcleaner/`: borrá esa carpeta si no los querés.
@@ -134,6 +135,13 @@ Carpetas y archivos de lo más pesado a lo más liviano, con lo que ArchCleaner 
 («🟢 caché», «juego: …», «workshop: …»). Podés mandar a la papelera o borrar, siempre pasando por la
 barrera de seguridad; fuera de tu home y de tus discos de datos es solo para mirar.
 
+**🤖 ¿Qué es esto? (opcional, IA local):** si tenés [Ollama](https://ollama.com) andando, aparece el
+botón 🤖 (o la tecla `?`): una IA que corre en tu PC explica qué es la carpeta, qué programa la usa y qué
+pasa si la borrás. Le llega la ruta, el peso, el paquete dueño y los nombres de lo que hay adentro, nunca
+el contenido de los archivos, y nada sale de tu PC. **Solo explica:** no cambia ninguna marca 🟢/🟡 ni
+borra nada, y si no reconoce la carpeta lo dice («No estoy seguro de qué es»). Modelo por defecto:
+`qwen3.5:9b` (`ollama pull qwen3.5:9b`, ~6 GB); se cambia con la variable `ARCHCLEANER_MODELO`.
+
 ## 🔍 Qué revisa
 
 - **Sistema:** logs de journald, coredumps, módulos de kernels viejos, snapshots de Timeshift de más
@@ -161,6 +169,7 @@ archcleaner/
   analisis.py     escaneo + detectores      seguridad.py   la última barrera antes de borrar
   escaner.py      mide carpetas (como du)   ficha.py       investiga un programa (paquetes, restos)
   historial.py    fotos y «qué creció»      programas.py   programas instalados y su último uso
+  ia.py           🤖 «¿Qué es esto?» (Ollama, opcional y de solo lectura)
   detectores/     un archivo por fuente de basura
   tui/            la app (textual): una pantalla por paso
 ```

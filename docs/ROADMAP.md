@@ -1,9 +1,11 @@
 # Hoja de ruta — ArchCleaner
 
-## 📍 Dónde quedamos (actualizado 2026-10-15)
-- **v0.10.1 publicada** en GitHub (release + `PKGBUILD` con su sha256). Hoja de ruta original completa; 71 tests.
-- **Bloqueado: subir al AUR.** El registro de cuentas del AUR estaba cerrado (ola de bots). Pasos abajo.
-- Sin tareas en curso. Pendientes chicos abajo.
+## 📍 Dónde quedamos (actualizado 2026-11-11)
+- **v0.11.0 en preparación (sin publicar):** 🤖 «¿Qué es esto?» en Explorar con IA local (Ollama, `qwen3.5:9b`,
+  `archcleaner/ia.py`). Hecho y con tests (84); probado contra el Ollama real. Falta: usarlo un tiempo,
+  regenerar las capturas si se quiere mostrar, y publicar (subir versión, tag, release, sha256).
+- Posible etapa 2: el mismo `?` en la pantalla de hallazgos 🟡 (solo si en Explorar convence).
+- v0.10.1 publicada en GitHub. **Bloqueado: subir al AUR** (registro de cuentas cerrado por bots). Pasos abajo.
 
 ---
 
@@ -22,6 +24,7 @@
 | 0.9.0 | Historial y "Qué creció" (fase 5). 0.9.1: repaso general de seguridad y colores |
 | 0.10.0 | Interfaz en español e inglés |
 | 0.10.1 | Repaso de seguridad antes de hacerlo público (puntos de montaje, archivos de paquetes) |
+| 0.11.0 (sin publicar) | 🤖 «¿Qué es esto?» en Explorar: IA local opcional que solo explica |
 
 ## Pendientes
 - **AUR** (cuando reabra el registro). El nombre `archcleaner` está libre y el `PKGBUILD` ya está listo.

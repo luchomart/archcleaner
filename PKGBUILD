@@ -13,6 +13,7 @@ optdepends=(
   'flatpak: uninstall Flatpak apps and clean unused runtimes'
   'xdg-utils: open folders and uninstall Steam games'
   'xdg-user-dirs: recognize your personal folders in any language'
+  'ollama: "What is this?" explanations in Explore, with a local AI (model: qwen3.5:9b)'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('ac683dae44fc4fff547f5e3b9d1cb9d2198d0463392bde594fc4decaccb67b18')

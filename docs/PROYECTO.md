@@ -19,6 +19,7 @@ Alcance: todo el sistema, incluidos Steam, Flatpak, AUR y discos extra montados 
 | sudo y pacman | La app se suspende (`App.suspend`) y se contestan en la terminal, a la vista. |
 | Timeshift | Antes de desinstalar se pregunta si sacar una snapshot (por defecto no; sí si son más de 15 paquetes). Limpiar ofrece borrar snapshots de más de 30 días, nunca la más reciente. |
 | Explorar | Solo borra dentro de home y `/mnt`; el resto del sistema es de solo lectura. |
+| IA local (🤖 ¿Qué es esto?) | Opcional (Ollama en `optdepends`; sin Ollama el botón no aparece) y solo en Explorar. La IA **solo explica**: no toca las marcas 🟢/🟡 ni borra. Se le manda ruta, peso, paquete dueño y nombres de lo de adentro, nunca contenidos. Modelo `qwen3.5:9b` (`ARCHCLEANER_MODELO` lo cambia), elegido en `ias-locales` (tarea 11): 22/24 carpetas reales, dudó en 6/6 inventadas. Responde un JSON con esquema fijo y las frases las pone la app; `ia.py` no le cree de más: si no conoce la carpeta y no hay paquete dueño, "perdés datos"; "es de un paquete" solo si pacman lo confirma. |
 | Último uso de un programa | atime de sus ejecutables (ignorando el horario de las snapshots de Timeshift, porque rsync cambia el atime), `LastPlayed` de Steam y `~/.var/app` para Flatpak. |
 | Historial | Una foto comprimida por análisis completo (carpetas ≥ 1 MB y espacio libre por disco). Se poda: todo 7 días, semanal hasta 90, después mensual. |
 | Idiomas | Español e inglés. Idioma por `LANG`, `--lang` o `ARCHCLEANER_LANG`; la CLI lo fija antes de importar porque hay textos armados al importar. |

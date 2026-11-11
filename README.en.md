@@ -59,7 +59,7 @@ A tool that deletes things has to earn your trust. This is how ArchCleaner works
 - **Anything that looks like game saves** (folders such as `saves` or `worlds`) is never pre-selected.
 - **It can create a Timeshift snapshot** before uninstalling, so you can roll back if something goes wrong.
 - **Everything is logged** in `~/.local/state/archcleaner/acciones.log`.
-- **It is open source and tested.** 71 automated tests run on every change. They cover the safety
+- **It is open source and tested.** 84 automated tests run on every change. They cover the safety
   rules, and they drive the app with mouse clicks inside a fake home folder.
 
 ## 📸 Screenshots
@@ -96,7 +96,8 @@ python archcleaner/archcleaner.py
 **Optional packages:**
 - `pacman-contrib`, to clean the pacman cache;
 - `timeshift`, for snapshots;
-- `flatpak`.
+- `flatpak`;
+- `ollama`, for the 🤖 "What is this?" button in Explore.
 
 **Uninstall:** run `sudo pacman -R archcleaner`. ArchCleaner's own data (log, history, preferences)
 is stored in `~/.local/state/archcleaner/`. Delete that folder if you don't want to keep it.
@@ -168,6 +169,15 @@ ArchCleaner knows about it, such as "🟢 cache", "game: …" or "workshop: …"
 You can send items to the trash or delete them permanently. Either way, every path goes through the
 safety check. Outside your home folder and your data drives, Explore is read-only.
 
+**🤖 What is this? (optional, local AI):** if [Ollama](https://ollama.com) is running, Explore shows a
+🤖 button (or press `?`). An AI running on your own PC explains what the folder is, which program uses
+it and what happens if you delete it. It only gets the path, the size, the owning package and the names
+of what is inside. It never sees file contents, and nothing leaves your PC.
+
+The AI only explains. It never changes a 🟢/🟡 mark and it can't delete anything. If it doesn't
+recognize a folder, it says so ("I'm not sure what this is"). The default model is `qwen3.5:9b`
+(`ollama pull qwen3.5:9b`, about 6 GB). To use another one, set `ARCHCLEANER_MODELO`.
+
 ## 🔍 What it checks
 
 - **System:**
@@ -207,6 +217,7 @@ python docs/generar_logo.py              # regenerates the logo and the social p
 The code is in Spanish. Main modules:
 - `acciones.py` is the only module that deletes anything.
 - `seguridad.py` is the last check before anything is deleted.
+- `ia.py` is the optional, read-only "What is this?" helper (Ollama).
 - `detectores/` has one file per junk source.
 - `tui/` contains the app, built with [Textual](https://textual.textualize.io/).
 

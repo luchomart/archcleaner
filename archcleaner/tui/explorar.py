@@ -19,23 +19,24 @@ from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Input, OptionList, Static
+from textual.widgets import Button, Input, LoadingIndicator, OptionList, Static
 from textual.widgets.option_list import Option
 
+from .. import i18n, ia
 from ..acciones import armar_tarea, ejecutar
 from ..analisis import Resultado
 from ..escaner import escanear
+from ..estado import hace, leer
+from ..historial import Foto
+from ..i18n import tr
 from ..limpiar import panel_definitivo
 from ..modelo import Hallazgo, Limpieza, Modo, Nivel
 from ..seguridad import ZONAS_DISCOS, Verificador
 from ..util import acortar, dentro_de, humano
-from ..estado import hace, leer
-from ..historial import Foto
+from ..util import ejecutar as correr
 from .comunes import ESPACIO, ConfirmarBorrado, Dialogo, barra_botones, cabecera
-from ..i18n import tr
-
 
 MINIMO_FILA = 10 * 1024**2  # cambios más chicos no se marcan en la lista
 
@@ -57,6 +58,7 @@ class ExplorarScreen(Screen[None]):
         Binding("shift+delete", "borrar", tr("Borrar")),
         Binding("f5,r", "actualizar", tr("Actualizar")),
         Binding("o", "abrir", tr("Abrir en el gestor de archivos")),
+        Binding("question_mark", "que_es", tr("¿Qué es esto? (IA local)")),
         Binding("escape", "cerrar", tr("Inicio")),
     ]
 
@@ -71,6 +73,7 @@ class ExplorarScreen(Screen[None]):
         self.verif = Verificador()
         self.home = str(Path.home())
         self.marcas = self._marcas(res.hallazgos)
+        self.con_ia = False  # se activa si Ollama responde (ver _buscar_ia)
 
     # ── datos ──
 
@@ -123,6 +126,7 @@ class ExplorarScreen(Screen[None]):
         with Horizontal(classes="botones barra-explorar"):
             yield Button(tr("← Subir"), id="subir")
             yield Button(tr("📂 Abrir"), id="abrir")
+            yield Button(tr("🤖 ¿Qué es?"), id="que_es", classes="oculto")
             yield Static(classes="separador")
             yield Button(tr("🗑 Papelera"), id="papelera", variant="warning")
             yield Button(tr("🔥 Borrar"), id="borrar", variant="error")
@@ -133,6 +137,18 @@ class ExplorarScreen(Screen[None]):
     def on_mount(self) -> None:
         self._ir(self.actual)
         self.query_one(OptionList).focus()
+        self._buscar_ia()
+
+    @work
+    async def _buscar_ia(self) -> None:
+        """El botón 🤖 aparece solo si hay un Ollama respondiendo (sin Ollama, la pantalla queda igual)."""
+        if await _en_hilo(ia.disponible):
+            self.con_ia = True
+            self.query_one("#que_es", Button).remove_class("oculto")
+            self.refresh_bindings()
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        return self.con_ia if action == "que_es" else True
 
     def _ir(self, carpeta: str, resaltar: str | None = None) -> None:
         self.actual = carpeta
@@ -272,7 +288,8 @@ class ExplorarScreen(Screen[None]):
             self._ir(self.adelante.pop())
 
     def on_button_pressed(self, ev: Button.Pressed) -> None:
-        acciones = {"subir": self.action_subir, "abrir": self.action_abrir, "papelera": self.action_papelera,
+        acciones = {"subir": self.action_subir, "abrir": self.action_abrir, "que_es": self.action_que_es,
+                    "papelera": self.action_papelera,
                     "borrar": self.action_borrar, "actualizar": self.action_actualizar, "cerrar": self.action_cerrar}
         if ev.button.id in acciones:
             acciones[ev.button.id]()
@@ -286,6 +303,19 @@ class ExplorarScreen(Screen[None]):
         destino = e.ruta if e and e.carpeta else self.actual
         subprocess.Popen(["xdg-open", destino], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.notify(tr("Abriendo {carpeta}", carpeta=destino.replace(self.home, "~", 1)))
+
+    def action_que_es(self) -> None:
+        e = self._elegida()
+        if e and self.con_ia:
+            self.app.push_screen(QueEsEsto(self._datos_ia(e)))
+
+    def _datos_ia(self, e: Entrada) -> ia.Datos:
+        """Lo que se le cuenta a la IA: ruta, peso, paquete dueño y lo más pesado de adentro (nunca contenidos)."""
+        adentro = None
+        if e.carpeta and not e.enlace:
+            adentro = [(x.nombre + ("/" if x.carpeta else ""), humano(x.peso))
+                       for x in self._leer(e.ruta)[:ia.MAX_ADENTRO]]
+        return ia.Datos(e.ruta.replace(self.home, "~", 1), e.carpeta, humano(e.peso), _paquetes_dueños(e.ruta), adentro)
 
     def action_papelera(self) -> None:
         self._borrar(Modo.PAPELERA)
@@ -373,6 +403,59 @@ class ExplorarScreen(Screen[None]):
 async def _en_hilo(funcion, *args):
     import asyncio
     return await asyncio.to_thread(funcion, *args)
+
+
+def _paquetes_dueños(ruta: str) -> list[str]:
+    """Paquetes que instalaron esa ruta, como "pacman 7.1.0-1" (pacman -Qo: una carpeta puede tener varios)."""
+    salida = correr(["pacman", "-Qo", "--", ruta], timeout=10) or ""
+    return [dueño for linea in salida.splitlines() if (dueño := linea.partition(" is owned by ")[2].strip())]
+
+
+class QueEsEsto(ModalScreen[None]):
+    """🤖 La IA local explica qué es algo. Solo lectura: no hay ningún botón para borrar desde acá."""
+
+    BINDINGS = [Binding("escape", "cerrar", tr("Cerrar"))]
+
+    def __init__(self, datos: ia.Datos):
+        super().__init__()
+        self.datos = datos
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="dialogo"):
+            yield Static(Text(tr("🤖 ¿Qué es esto?"), style="bold"), classes="dialogo-titulo")
+            yield Static(Text.assemble(("📁 " if self.datos.carpeta else "📄 ", ""), (self.datos.ruta, "bold"),
+                                       (f"  ({self.datos.peso})", "dim")))
+            yield LoadingIndicator(id="pensando")
+            yield Static(Text(tr("La primera vez tarda más: Ollama carga el modelo."), style="dim"), id="primera")
+            with VerticalScroll(classes="dialogo-cuerpo"):
+                yield Static(id="respuesta")
+            yield Static(Text(tr("Explicación generada por IA local ({modelo}): puede equivocarse. "
+                                 "No cambia lo que ArchCleaner marca como 🟢 o 🟡.", modelo=ia.modelo()),
+                              style="dim italic"), id="aviso-ia")
+            yield barra_botones([ESPACIO, ("cerrar", tr("Cerrar"), "primary")])
+
+    def on_mount(self) -> None:
+        self.query_one("#cerrar", Button).focus()
+        self._preguntar()
+
+    @work
+    async def _preguntar(self) -> None:
+        respuesta = self.query_one("#respuesta", Static)
+        try:
+            r = await _en_hilo(ia.preguntar, self.datos, i18n.idioma)
+            texto = Text("\n").join(Text(x) for x in ia.lineas(r, self.datos))
+        except ia.SinIA as e:
+            texto = Text(str(e), style="yellow")
+        if self.is_attached:
+            self.query_one("#pensando").display = False
+            self.query_one("#primera").display = False
+            respuesta.update(texto)
+
+    def on_button_pressed(self, ev: Button.Pressed) -> None:
+        self.dismiss(None)
+
+    def action_cerrar(self) -> None:
+        self.dismiss(None)
 
 
 class ElegirRaiz(ModalScreen[str | None]):
