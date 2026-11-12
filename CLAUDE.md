@@ -13,6 +13,8 @@ Estructura del código y cómo sumar un detector: sección "Para desarrolladores
   los archivos tocados (antes/después con `git stash`).
 - Cambios al prompt de `ia.py`: validarlos antes con `~/Escritorio/proyectos/ias-locales/pruebas/que_es_esto.py`
   (carpetas reales e inventadas: que no empiece a inventar).
+- Un archivo de tests suelto: `python -m unittest discover -s tests -p "test_ia.py"` (`-m unittest tests.test_ia` falla: importa `test_tui`).
+- Ver una pantalla real: `app.save_screenshot()` en `run_test` (SVG) + `chromium --headless --screenshot=x.png file://…svg`.
 - Tests de textual: en un `OptionList`, los separadores (`None`) ocupan una línea en pantalla pero no un índice.
 - Capturas: `python docs/generar_capturas.py` (es + en, siempre con datos inventados). Logo: `python docs/generar_logo.py`.
 - Probar la app real: comando `archcleaner` (symlink en `~/.local/bin` al `archcleaner.py` del repo; sin argumentos abre el menú).
